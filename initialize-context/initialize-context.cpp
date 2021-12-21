@@ -4,18 +4,38 @@
 #include "framework.h"
 #include "initialize-context.h"
 
+#include <dxgi.h>
+#include <d3dcommon.h>
+#include <d3d11.h>
+
+#include <iostream>
+
 #define MAX_LOADSTRING 100
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+HWND g_hWnd;                                    // Main window
+IDXGISwapChain* g_pSwapChain;                   // Swap Chain
+ID3D11Device* g_pd3dDevice;                     // D3D Device
+ID3D11DeviceContext* g_pImmediateContext;       // D3D Immediate Context
+ID3D11RenderTargetView* g_pRenderTargetView;    // Render Target View
+D3D11_VIEWPORT  g_Viewport;
+
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
+DXGI_SWAP_CHAIN_DESC DefineSwapChainInitParams(HWND hWnd);
+HRESULT CreateDevice(DXGI_SWAP_CHAIN_DESC sd);
+
+HRESULT CreateRenderTargetView();
+
+void SetupViewport();
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -37,6 +57,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     {
         return FALSE;
     }
+    DXGI_SWAP_CHAIN_DESC sd = DefineSwapChainInitParams(g_hWnd);
+    
+    if (FAILED(CreateDevice(sd)))
+    {
+        std::cerr << "ERROR: Failed to create device context" << std::endl;
+        return FALSE;
+    }
+
+    _ASSERT(g_pSwapChain != nullptr);
+    _ASSERT(g_pd3dDevice != nullptr);
+    if (FAILED(CreateRenderTargetView()))
+    {
+        std::cerr << "ERROR: Failed to create render target view" << std::endl;
+        return FALSE;
+    }
+
+    SetupViewport();
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_INITIALIZECONTEXT));
 
@@ -107,6 +144,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
+   g_hWnd = hWnd;
 
    return TRUE;
 }
@@ -177,4 +215,87 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
     return (INT_PTR)FALSE;
+}
+
+DXGI_SWAP_CHAIN_DESC DefineSwapChainInitParams(HWND hWnd)
+{
+    DXGI_SWAP_CHAIN_DESC sd;
+    ZeroMemory(&sd, sizeof(sd));
+    sd.BufferCount = 1;
+    sd.BufferDesc.Width = 1024;
+    sd.BufferDesc.Height = 768;
+    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    sd.BufferDesc.RefreshRate.Numerator = 60;
+    sd.BufferDesc.RefreshRate.Denominator = 1;
+    sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    sd.OutputWindow = hWnd;
+    sd.SampleDesc.Count = 1;
+    sd.SampleDesc.Quality = 0;
+    sd.Windowed = TRUE;
+    return sd;
+}
+
+HRESULT CreateDevice(DXGI_SWAP_CHAIN_DESC sd)
+{
+    HRESULT hr = S_OK;
+    constexpr D3D_FEATURE_LEVEL FeatureLevels[] = {
+        D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0,
+        D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0,
+        D3D_FEATURE_LEVEL_9_3, D3D_FEATURE_LEVEL_9_2, 
+        D3D_FEATURE_LEVEL_9_1
+    };
+    UINT createDeviceFlag = 0;
+#ifdef _DEBUG
+    createDeviceFlag |= D3D11_CREATE_DEVICE_DEBUG;
+#endif // _DEBUG
+
+
+    D3D_FEATURE_LEVEL FeatureLevel;
+
+    hr = D3D11CreateDeviceAndSwapChain(nullptr,
+                                        D3D_DRIVER_TYPE_HARDWARE,
+                                        nullptr,
+                                        createDeviceFlag,
+                                        FeatureLevels,
+                                        _countof(FeatureLevels),
+                                        D3D11_SDK_VERSION,
+                                        &sd,
+                                        &g_pSwapChain,
+                                        &g_pd3dDevice,
+                                        &FeatureLevel,
+                                        &g_pImmediateContext);
+
+    return hr;
+}
+
+HRESULT CreateRenderTargetView()
+{
+    ID3D11Texture2D* pBackBuffer = nullptr;
+    // get a pointer to back buffer
+    HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D),
+        (LPVOID*)&pBackBuffer);
+
+    _ASSERT(pBackBuffer != nullptr);
+
+    // create a render target view
+    g_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &g_pRenderTargetView);
+
+    // bind the view
+    g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, nullptr);
+
+    return hr;
+}
+
+void SetupViewport()
+{
+    // Setup the viewport
+    D3D11_VIEWPORT vp;
+    vp.Width = 640;
+    vp.Height = 480;
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    vp.TopLeftX = 0;
+    vp.TopLeftY = 0;
+    g_pImmediateContext->RSSetViewports(1, &vp);
+    g_Viewport = vp;
 }
