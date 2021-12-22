@@ -5,15 +5,27 @@
 #include "pch.h"
 #include "Game.h"
 
+#include "ATGColors.h"
+#include "ReadData.h"
+
 extern void ExitGame() noexcept;
 
 using namespace DirectX;
 
 using Microsoft::WRL::ComPtr;
 
+namespace
+{
+    struct Vertex
+    {
+        XMFLOAT4 position;
+        XMFLOAT4 color;
+    };
+}
+
 Game::Game() noexcept(false)
 {
-    m_deviceResources = std::make_unique<DX::DeviceResources>();
+    m_deviceResources = std::make_unique<DX::DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB);
     m_deviceResources->RegisterDeviceNotify(this);
 }
 
@@ -30,10 +42,8 @@ void Game::Initialize(HWND window, int width, int height)
 
     // TODO: Change the timer settings if you want something other than the default variable timestep mode.
     // e.g. for 60 FPS fixed timestep update logic, call:
-    /*
     m_timer.SetFixedTimeStep(true);
     m_timer.SetTargetElapsedSeconds(1.0 / 60);
-    */
 }
 
 #pragma region Frame Update
@@ -74,7 +84,20 @@ void Game::Render()
     auto context = m_deviceResources->GetD3DDeviceContext();
 
     // TODO: Add your rendering code here.
-    context;
+    // Set input assembler state
+    context->IASetInputLayout(m_spInputLayout.Get());
+
+    UINT strides = sizeof(Vertex);
+    UINT offsets = 0;
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    context->IASetVertexBuffers(0, 1, m_spVertexBuffer.GetAddressOf(), &strides, &offsets);
+
+    // Set shaders
+    context->VSSetShader(m_spVertexShader.Get(), nullptr, 0);
+    context->PSSetShader(m_spPixelShader.Get(), nullptr, 0);
+
+    // Draw triangle
+    context->Draw(3, 0);
 
     m_deviceResources->PIXEndEvent();
 
@@ -148,8 +171,8 @@ void Game::OnWindowSizeChanged(int width, int height)
 void Game::GetDefaultSize(int& width, int& height) const noexcept
 {
     // TODO: Change to desired default window size (note minimum size is 320x200).
-    width = 800;
-    height = 600;
+    width = 1280;
+    height = 720;
 }
 #pragma endregion
 
@@ -160,7 +183,50 @@ void Game::CreateDeviceDependentResources()
     auto device = m_deviceResources->GetD3DDevice();
 
     // TODO: Initialize device dependent objects here (independent of window size).
-    device;
+    // Load and create shaders
+    auto vertexShaderBlob = DX::ReadData(L"VertexShader.cso");
+
+    DX::ThrowIfFailed(
+        device->CreateVertexShader(vertexShaderBlob.data(), vertexShaderBlob.size(),
+            nullptr, m_spVertexShader.ReleaseAndGetAddressOf()));
+
+    auto pixelShaderBlob = DX::ReadData(L"PixelShader.cso");
+
+    DX::ThrowIfFailed(
+        device->CreatePixelShader(pixelShaderBlob.data(), pixelShaderBlob.size(),
+            nullptr, m_spPixelShader.ReleaseAndGetAddressOf()));
+
+    // Create input layout
+    static constexpr D3D11_INPUT_ELEMENT_DESC s_inputElementDesc[2] = {
+        {"SV_Position", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0}
+    };
+
+    DX::ThrowIfFailed(
+        device->CreateInputLayout(s_inputElementDesc, _countof(s_inputElementDesc),
+            vertexShaderBlob.data(), vertexShaderBlob.size(),
+            m_spInputLayout.ReleaseAndGetAddressOf()));
+
+    // Create vertex buffer
+    static constexpr Vertex s_vertexData[3] =
+    {
+        { { 0.0f,   0.5f,  0.5f, 1.0f },{ 1.0f, 0.0f, 0.0f, 1.0f } },  // Top / Red
+        { { 0.5f,  -0.5f,  0.5f, 1.0f },{ 0.0f, 1.0f, 0.0f, 1.0f } },  // Right / Green
+        { { -0.5f, -0.5f,  0.5f, 1.0f },{ 0.0f, 0.0f, 1.0f, 1.0f } }   // Left / Blue
+    };
+
+    D3D11_SUBRESOURCE_DATA initialData = {};
+    initialData.pSysMem = s_vertexData;
+
+    D3D11_BUFFER_DESC bufferDesc = {};
+    bufferDesc.ByteWidth = sizeof(s_vertexData);
+    bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    bufferDesc.StructureByteStride = sizeof(Vertex);
+
+    DX::ThrowIfFailed(
+        device->CreateBuffer(&bufferDesc, &initialData,
+            m_spVertexBuffer.ReleaseAndGetAddressOf()));
 }
 
 // Allocate all memory resources that change on a window SizeChanged event.

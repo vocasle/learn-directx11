@@ -59,4 +59,10 @@ private:
 
     // Rendering loop timer.
     DX::StepTimer                           m_timer;
+
+    // Sample objects
+    Microsoft::WRL::ComPtr<ID3D11InputLayout>       m_spInputLayout;
+    Microsoft::WRL::ComPtr<ID3D11Buffer>            m_spVertexBuffer;
+    Microsoft::WRL::ComPtr<ID3D11VertexShader>      m_spVertexShader;
+    Microsoft::WRL::ComPtr<ID3D11PixelShader>       m_spPixelShader;
 };
