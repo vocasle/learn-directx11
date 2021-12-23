@@ -14,6 +14,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "triangle", "triangle\triang
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cube", "cube\cube.vcxproj", "{A5B6884F-2103-4416-BBAC-D461D50F9ECA}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vector-math", "vector-math\vector-math.vcxproj", "{6E47DA5F-4E42-4CA0-BCBF-90587D2BED0C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -46,6 +48,14 @@ Global
 		{A5B6884F-2103-4416-BBAC-D461D50F9ECA}.Release|x64.Build.0 = Release|x64
 		{A5B6884F-2103-4416-BBAC-D461D50F9ECA}.Release|x86.ActiveCfg = Release|Win32
 		{A5B6884F-2103-4416-BBAC-D461D50F9ECA}.Release|x86.Build.0 = Release|Win32
+		{6E47DA5F-4E42-4CA0-BCBF-90587D2BED0C}.Debug|x64.ActiveCfg = Debug|x64
+		{6E47DA5F-4E42-4CA0-BCBF-90587D2BED0C}.Debug|x64.Build.0 = Debug|x64
+		{6E47DA5F-4E42-4CA0-BCBF-90587D2BED0C}.Debug|x86.ActiveCfg = Debug|Win32
+		{6E47DA5F-4E42-4CA0-BCBF-90587D2BED0C}.Debug|x86.Build.0 = Debug|Win32
+		{6E47DA5F-4E42-4CA0-BCBF-90587D2BED0C}.Release|x64.ActiveCfg = Release|x64
+		{6E47DA5F-4E42-4CA0-BCBF-90587D2BED0C}.Release|x64.Build.0 = Release|x64
+		{6E47DA5F-4E42-4CA0-BCBF-90587D2BED0C}.Release|x86.ActiveCfg = Release|Win32
+		{6E47DA5F-4E42-4CA0-BCBF-90587D2BED0C}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
