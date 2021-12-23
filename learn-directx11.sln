@@ -12,6 +12,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "init-d3d-context", "init-d3
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "triangle", "triangle\triangle.vcxproj", "{F3E8782C-3A46-47B6-94BB-62377AC10E2B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cube", "cube\cube.vcxproj", "{A5B6884F-2103-4416-BBAC-D461D50F9ECA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -36,6 +38,14 @@ Global
 		{F3E8782C-3A46-47B6-94BB-62377AC10E2B}.Release|x64.Build.0 = Release|x64
 		{F3E8782C-3A46-47B6-94BB-62377AC10E2B}.Release|x86.ActiveCfg = Release|Win32
 		{F3E8782C-3A46-47B6-94BB-62377AC10E2B}.Release|x86.Build.0 = Release|Win32
+		{A5B6884F-2103-4416-BBAC-D461D50F9ECA}.Debug|x64.ActiveCfg = Debug|x64
+		{A5B6884F-2103-4416-BBAC-D461D50F9ECA}.Debug|x64.Build.0 = Debug|x64
+		{A5B6884F-2103-4416-BBAC-D461D50F9ECA}.Debug|x86.ActiveCfg = Debug|Win32
+		{A5B6884F-2103-4416-BBAC-D461D50F9ECA}.Debug|x86.Build.0 = Debug|Win32
+		{A5B6884F-2103-4416-BBAC-D461D50F9ECA}.Release|x64.ActiveCfg = Release|x64
+		{A5B6884F-2103-4416-BBAC-D461D50F9ECA}.Release|x64.Build.0 = Release|x64
+		{A5B6884F-2103-4416-BBAC-D461D50F9ECA}.Release|x86.ActiveCfg = Release|Win32
+		{A5B6884F-2103-4416-BBAC-D461D50F9ECA}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
