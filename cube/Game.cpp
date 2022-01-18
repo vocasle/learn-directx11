@@ -90,7 +90,7 @@ void Game::Render()
     Clear();
 
     m_deviceResources->PIXBeginEvent(L"Render");
-    auto context = m_deviceResources->GetD3DDeviceContext();
+    const auto context = m_deviceResources->GetD3DDeviceContext();
 
     // Add your rendering code here.
 
@@ -120,7 +120,7 @@ void Game::Render()
     }
 
     // Vertex shader needs view and projection matrices to perform vertex transform
-    context->CSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
+    context->VSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
     // Set vertex shader
     context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
     // Set pixel shader
@@ -252,14 +252,14 @@ void Game::CreateDeviceDependentResources()
         static constexpr XMFLOAT4 color = { 1.0f, 0.0f, 0.0f, 1.0f };
         static constexpr Vertex s_vertexData[8] =
         {
-            { XMFLOAT4(-1.0f, -1.0f, -1.0f, 1.0f), White },
-            { XMFLOAT4(-1.0f, +1.0f, -1.0f, 1.0f), Black },
-            { XMFLOAT4(+1.0f, -1.0f, -1.0f, 1.0f), Green },
-            { XMFLOAT4(+1.0f, +1.0f, -1.0f, 1.0f), Red },
-            { XMFLOAT4(-1.0f, -1.0f, +1.0f, 1.0f), Blue },
-            { XMFLOAT4(-1.0f, +1.0f, +1.0f, 1.0f), Yellow },
-            { XMFLOAT4(+1.0f, +1.0f, +1.0f, 1.0f), Cyan },
-            { XMFLOAT4(+1.0f, -1.0f, +1.0f, 1.0f), Magenta }
+            { XMFLOAT4(-1.0f, -1.0f, -1.0f, 1.0f), White }, // front bottom left
+            { XMFLOAT4(-1.0f, +1.0f, -1.0f, 1.0f), Black }, // front top left
+            { XMFLOAT4(+1.0f, -1.0f, -1.0f, 1.0f), Green }, // front bottom right
+            { XMFLOAT4(+1.0f, +1.0f, -1.0f, 1.0f), Red }, // front top right
+            { XMFLOAT4(-1.0f, -1.0f, +1.0f, 1.0f), Blue }, // rear bottom left
+            { XMFLOAT4(-1.0f, +1.0f, +1.0f, 1.0f), Yellow }, // rear top left
+            { XMFLOAT4(+1.0f, -1.0f, +1.0f, 1.0f), Magenta }, // rear bottom right
+            { XMFLOAT4(+1.0f, +1.0f, +1.0f, 1.0f), Cyan }, // rear top right
         };
 
         D3D11_SUBRESOURCE_DATA initialData = {};
@@ -281,22 +281,22 @@ void Game::CreateDeviceDependentResources()
         constexpr unsigned int s_indexData[36] = {
             // front face
             0, 1, 2,
-            0, 2, 3,
+            1, 3, 2,
             // back face
-            4, 6, 5,
-            4, 7, 6,
+            4, 6, 7,
+            4, 7, 5,
             // left face
-            4, 5, 1,
-            4, 1, 0,
+            0, 4, 5,
+            0, 5, 1,
             // right face
-            3, 2, 6,
-            3, 6, 7,
+			2, 3, 6,
+            6, 3, 7,
             // top face
-            1, 5, 6,
-            1, 6, 2,
+            1, 5, 3,
+            3, 5, 7,
             // bottom face
-            4, 0, 3,
-            4, 3, 7
+            0, 2, 4,
+            2, 6, 4
         };
 
         D3D11_BUFFER_DESC bufferDesc = {};
@@ -315,7 +315,7 @@ void Game::CreateDeviceDependentResources()
 
     // Create the constant buffer
     {
-        CD3D11_BUFFER_DESC bufferDesc(sizeof(ConstantBuffer), D3D11_BIND_CONSTANT_BUFFER,
+        const CD3D11_BUFFER_DESC bufferDesc(sizeof(ConstantBuffer), D3D11_BIND_CONSTANT_BUFFER,
             D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
         DX::ThrowIfFailed(device->CreateBuffer(&bufferDesc, nullptr,
             m_constantBuffer.GetAddressOf()));
@@ -336,7 +336,7 @@ void Game::CreateWindowSizeDependentResources()
 {
     // Initialize windows-size dependent objects here.
     const RECT size = m_deviceResources->GetOutputSize();
-    XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV4,
+    const XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV4,
         static_cast<float>(size.right) / static_cast<float>(size.bottom),
         0.01f, 100.0f);
     XMStoreFloat4x4(&m_projectionMatrix, projection);
