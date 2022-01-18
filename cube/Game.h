@@ -61,8 +61,16 @@ private:
     DX::StepTimer                           m_timer;
 
     // Sample objects
-    Microsoft::WRL::ComPtr<ID3D11InputLayout>       m_spInputLayout;
-    Microsoft::WRL::ComPtr<ID3D11Buffer>            m_spVertexBuffer;
-    Microsoft::WRL::ComPtr<ID3D11VertexShader>      m_spVertexShader;
-    Microsoft::WRL::ComPtr<ID3D11PixelShader>       m_spPixelShader;
+    Microsoft::WRL::ComPtr<ID3D11InputLayout>       m_inputLayout;
+    Microsoft::WRL::ComPtr<ID3D11Buffer>            m_vertexBuffer;
+    Microsoft::WRL::ComPtr<ID3D11Buffer>            m_indexBuffer;
+    Microsoft::WRL::ComPtr<ID3D11Buffer>            m_constantBuffer;
+    Microsoft::WRL::ComPtr<ID3D11VertexShader>      m_vertexShader;
+    Microsoft::WRL::ComPtr<ID3D11PixelShader>       m_pixelShader;
+
+    // These computed values will be loaded into a ConstantBuffer
+    // during Render
+    DirectX::XMFLOAT4X4                        m_worldMatrix;
+    DirectX::XMFLOAT4X4                        m_viewMatrix;
+    DirectX::XMFLOAT4X4                        m_projectionMatrix;
 };

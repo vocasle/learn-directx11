@@ -21,6 +21,15 @@ namespace
         XMFLOAT4 position;
         XMFLOAT4 color;
     };
+
+    struct ConstantBuffer
+    {
+        XMMATRIX worldMatrix;
+        XMMATRIX viewMatrix;
+        XMMATRIX projectionMatrix;
+    };
+
+    static_assert((sizeof(ConstantBuffer) % 16) == 0, "Constant buffer must always be 16-byte aligned");
 }
 
 Game::Game() noexcept(false)
@@ -40,7 +49,7 @@ void Game::Initialize(HWND window, int width, int height)
     m_deviceResources->CreateWindowSizeDependentResources();
     CreateWindowSizeDependentResources();
 
-    // TODO: Change the timer settings if you want something other than the default variable timestep mode.
+    // Change the timer settings if you want something other than the default variable timestep mode.
     // e.g. for 60 FPS fixed timestep update logic, call:
     m_timer.SetFixedTimeStep(true);
     m_timer.SetTargetElapsedSeconds(1.0 / 60);
@@ -83,21 +92,42 @@ void Game::Render()
     m_deviceResources->PIXBeginEvent(L"Render");
     auto context = m_deviceResources->GetD3DDeviceContext();
 
-    // TODO: Add your rendering code here.
+    // Add your rendering code here.
+
+    // Set the vertex buffer
+    constexpr UINT strides = sizeof(Vertex);
+    constexpr UINT offsets = 0;
+    context->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &strides, &offsets);
+    // Set the index buffer
+    context->IASetIndexBuffer(m_indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
     // Set input assembler state
-    context->IASetInputLayout(m_spInputLayout.Get());
-
-    UINT strides = sizeof(Vertex);
-    UINT offsets = 0;
+    context->IASetInputLayout(m_inputLayout.Get());
+    // Set the primitive topology
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    context->IASetVertexBuffers(0, 1, m_spVertexBuffer.GetAddressOf(), &strides, &offsets);
 
-    // Set shaders
-    context->VSSetShader(m_spVertexShader.Get(), nullptr, 0);
-    context->PSSetShader(m_spPixelShader.Get(), nullptr, 0);
+    // Set the per-frame constants
+    ConstantBuffer sceneParams = {};
+    // For shaders compiled with default row-major we need to transpose matrices
+    sceneParams.worldMatrix = XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix));
+    sceneParams.viewMatrix = XMMatrixTranspose(XMLoadFloat4x4(&m_viewMatrix));
+    sceneParams.projectionMatrix = XMMatrixTranspose(XMLoadFloat4x4(&m_projectionMatrix));
+    {
+        D3D11_MAPPED_SUBRESOURCE mapped;
+        DX::ThrowIfFailed(context->Map(m_constantBuffer.Get(), 0,
+            D3D11_MAP_WRITE_DISCARD, 0, &mapped));
+        memcpy(mapped.pData, &sceneParams, sizeof(ConstantBuffer));
+        context->Unmap(m_constantBuffer.Get(), 0);
+    }
 
-    // Draw triangle
-    context->Draw(6, 0);
+    // Vertex shader needs view and projection matrices to perform vertex transform
+    context->CSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
+    // Set vertex shader
+    context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
+    // Set pixel shader
+    context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+
+    // Draw the cube indexed
+    context->DrawIndexed(36, 0, 0);
 
     m_deviceResources->PIXEndEvent();
 
@@ -182,66 +212,145 @@ void Game::CreateDeviceDependentResources()
 {
     auto device = m_deviceResources->GetD3DDevice();
 
-    // TODO: Initialize device dependent objects here (independent of window size).
+    // Initialize device dependent objects here (independent of window size).
     // Load and create shaders
-    auto vertexShaderBlob = DX::ReadData(L"VertexShader.cso");
+    {
+        auto vertexShaderBlob = DX::ReadData(L"VertexShader.cso");
 
-    DX::ThrowIfFailed(
-        device->CreateVertexShader(vertexShaderBlob.data(), vertexShaderBlob.size(),
-            nullptr, m_spVertexShader.ReleaseAndGetAddressOf()));
+        DX::ThrowIfFailed(
+            device->CreateVertexShader(vertexShaderBlob.data(), vertexShaderBlob.size(),
+                nullptr, m_vertexShader.ReleaseAndGetAddressOf()));
 
-    auto pixelShaderBlob = DX::ReadData(L"PixelShader.cso");
+        auto pixelShaderBlob = DX::ReadData(L"PixelShader.cso");
 
-    DX::ThrowIfFailed(
-        device->CreatePixelShader(pixelShaderBlob.data(), pixelShaderBlob.size(),
-            nullptr, m_spPixelShader.ReleaseAndGetAddressOf()));
+        DX::ThrowIfFailed(
+            device->CreatePixelShader(pixelShaderBlob.data(), pixelShaderBlob.size(),
+                nullptr, m_pixelShader.ReleaseAndGetAddressOf()));
 
-    // Create input layout
-    static constexpr D3D11_INPUT_ELEMENT_DESC s_inputElementDesc[2] = {
-        {"SV_Position", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-        {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0}
-    };
+        // Create input layout
+        static constexpr D3D11_INPUT_ELEMENT_DESC s_inputElementDesc[2] = {
+            {"SV_Position", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+            {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0}
+        };
 
-    DX::ThrowIfFailed(
-        device->CreateInputLayout(s_inputElementDesc, _countof(s_inputElementDesc),
-            vertexShaderBlob.data(), vertexShaderBlob.size(),
-            m_spInputLayout.ReleaseAndGetAddressOf()));
+        DX::ThrowIfFailed(
+            device->CreateInputLayout(s_inputElementDesc, _countof(s_inputElementDesc),
+                vertexShaderBlob.data(), vertexShaderBlob.size(),
+                m_inputLayout.ReleaseAndGetAddressOf()));
+    }
 
     // Create vertex buffer
-    static constexpr XMFLOAT4 color = { 0.0f, 0.0f, 1.0f, 1.0f };
-    static constexpr Vertex s_vertexData[6] =
     {
-        { { -0.5f,   -0.5f,  0.5f, 1.0f },{1.0f, 0.0f, 0.0f, 1.0f }},  // Top / Red
-        { { -0.5f,  0.5f,  0.5f, 1.0f },{0.0f, 1.0f, 0.0f, 1.0f} },  // Right / Green
-        { { 0.5f, 0.5f,  0.5f, 1.0f },color },   // Left / Blue
-        { { -0.5f, -0.5f,  0.5f, 1.0f },color },
-        { { 0.5f, 0.5f,  0.5f, 1.0f },color },
-        { { 0.5f, -0.5f,  0.5f, 1.0f },color }
-    };
+        constexpr XMFLOAT4 White = { 1.0f, 1.0f, 1.0f, 1.0f };
+        constexpr XMFLOAT4 Black = { 0.0f, 0.0f, 0.0f, 1.0f };
+        constexpr XMFLOAT4 Red = { 1.0f, 0.0f, 0.0f, 1.0f };
+        constexpr XMFLOAT4 Green = { 0.0f, 1.0f, 0.0f, 1.0f };
+        constexpr XMFLOAT4 Blue = { 0.0f, 0.0f, 1.0f, 1.0f };
+        constexpr XMFLOAT4 Yellow = { 1.0f, 1.0f, 0.0f, 1.0f };
+        constexpr XMFLOAT4 Cyan = { 0.0f, 1.0f, 1.0f, 1.0f };
+        constexpr XMFLOAT4 Magenta = { 1.0f, 0.0f, 1.0f, 1.0f };
+        static constexpr XMFLOAT4 color = { 1.0f, 0.0f, 0.0f, 1.0f };
+        static constexpr Vertex s_vertexData[8] =
+        {
+            { XMFLOAT4(-1.0f, -1.0f, -1.0f, 1.0f), White },
+            { XMFLOAT4(-1.0f, +1.0f, -1.0f, 1.0f), Black },
+            { XMFLOAT4(+1.0f, -1.0f, -1.0f, 1.0f), Green },
+            { XMFLOAT4(+1.0f, +1.0f, -1.0f, 1.0f), Red },
+            { XMFLOAT4(-1.0f, -1.0f, +1.0f, 1.0f), Blue },
+            { XMFLOAT4(-1.0f, +1.0f, +1.0f, 1.0f), Yellow },
+            { XMFLOAT4(+1.0f, +1.0f, +1.0f, 1.0f), Cyan },
+            { XMFLOAT4(+1.0f, -1.0f, +1.0f, 1.0f), Magenta }
+        };
 
-    D3D11_SUBRESOURCE_DATA initialData = {};
-    initialData.pSysMem = s_vertexData;
+        D3D11_SUBRESOURCE_DATA initialData = {};
+        initialData.pSysMem = s_vertexData;
 
-    D3D11_BUFFER_DESC bufferDesc = {};
-    bufferDesc.ByteWidth = sizeof(s_vertexData);
-    bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-    bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    bufferDesc.StructureByteStride = sizeof(Vertex);
+        D3D11_BUFFER_DESC bufferDesc = {};
+        bufferDesc.ByteWidth = sizeof(Vertex) * 8;
+        bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+        bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        bufferDesc.StructureByteStride = sizeof(Vertex);
 
-    DX::ThrowIfFailed(
-        device->CreateBuffer(&bufferDesc, &initialData,
-            m_spVertexBuffer.ReleaseAndGetAddressOf()));
+        DX::ThrowIfFailed(
+            device->CreateBuffer(&bufferDesc, &initialData,
+                m_vertexBuffer.ReleaseAndGetAddressOf()));
+    }
+
+    // Create index buffer
+    {
+        constexpr unsigned int s_indexData[36] = {
+            // front face
+            0, 1, 2,
+            0, 2, 3,
+            // back face
+            4, 6, 5,
+            4, 7, 6,
+            // left face
+            4, 5, 1,
+            4, 1, 0,
+            // right face
+            3, 2, 6,
+            3, 6, 7,
+            // top face
+            1, 5, 6,
+            1, 6, 2,
+            // bottom face
+            4, 0, 3,
+            4, 3, 7
+        };
+
+        D3D11_BUFFER_DESC bufferDesc = {};
+        bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+        bufferDesc.ByteWidth = sizeof(unsigned int) * 36;
+        bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+        bufferDesc.StructureByteStride = 0;
+
+        D3D11_SUBRESOURCE_DATA initialData = {};
+        initialData.pSysMem = s_indexData;
+
+        DX::ThrowIfFailed(
+            device->CreateBuffer(&bufferDesc, &initialData,
+                m_indexBuffer.ReleaseAndGetAddressOf()));
+    }
+
+    // Create the constant buffer
+    {
+        CD3D11_BUFFER_DESC bufferDesc(sizeof(ConstantBuffer), D3D11_BIND_CONSTANT_BUFFER,
+            D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+        DX::ThrowIfFailed(device->CreateBuffer(&bufferDesc, nullptr,
+            m_constantBuffer.GetAddressOf()));
+    }
+
+    // Initialize the world matrix
+    XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
+
+    // Initialize the view matrix
+    static const XMVECTORF32 c_eye = { 0.0f, 4.0f, -10.0f, 0.0f };
+    static const XMVECTORF32 c_at = { 0.0f, 1.0f, 0.0f, 0.0f };
+    static const XMVECTORF32 c_up = { 0.0f, 1.0f, 0.0f, 0.0f };
+    XMStoreFloat4x4(&m_viewMatrix, XMMatrixLookAtLH(c_eye, c_at, c_up));
 }
 
 // Allocate all memory resources that change on a window SizeChanged event.
 void Game::CreateWindowSizeDependentResources()
 {
-    // TODO: Initialize windows-size dependent objects here.
+    // Initialize windows-size dependent objects here.
+    const RECT size = m_deviceResources->GetOutputSize();
+    XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV4,
+        static_cast<float>(size.right) / static_cast<float>(size.bottom),
+        0.01f, 100.0f);
+    XMStoreFloat4x4(&m_projectionMatrix, projection);
 }
 
 void Game::OnDeviceLost()
 {
-    // TODO: Add Direct3D resource cleanup here.
+    // Add Direct3D resource cleanup here.
+    m_inputLayout.Reset();
+    m_vertexBuffer.Reset();
+    m_indexBuffer.Reset();
+    m_vertexShader.Reset();
+    m_pixelShader.Reset();
+    m_constantBuffer.Reset();
 }
 
 void Game::OnDeviceRestored()
