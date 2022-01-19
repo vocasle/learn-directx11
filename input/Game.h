@@ -7,6 +7,9 @@
 #include "DeviceResources.h"
 #include "StepTimer.h"
 
+#include <Keyboard.h>
+#include <GamePad.h>
+#include <Mouse.h>
 
 // A basic game implementation that creates a D3D11 device and
 // provides a game loop.
@@ -73,4 +76,13 @@ private:
     DirectX::XMFLOAT4X4                        m_worldMatrix;
     DirectX::XMFLOAT4X4                        m_viewMatrix;
     DirectX::XMFLOAT4X4                        m_projectionMatrix;
+
+    // Input devices
+    std::unique_ptr<DirectX::GamePad>       m_gamePad;
+    std::unique_ptr<DirectX::Keyboard>      m_keyboard;
+    std::unique_ptr<DirectX::Mouse>         m_mouse;
+
+    DirectX::GamePad::ButtonStateTracker    m_gamePadButtons;
+    DirectX::Keyboard::KeyboardStateTracker m_keyboardButtons;
+    DirectX::Mouse::ButtonStateTracker      m_mouseButtons;
 };

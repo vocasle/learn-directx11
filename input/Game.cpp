@@ -41,6 +41,11 @@ Game::Game() noexcept(false)
 // Initialize the Direct3D resources required to run.
 void Game::Initialize(HWND window, int width, int height)
 {
+    // Initialize input devices
+    m_gamePad = std::make_unique<GamePad>();
+    m_keyboard = std::make_unique<Keyboard>();
+    m_mouse = std::make_unique<Mouse>();
+
     m_deviceResources->SetWindow(window, width, height);
 
     m_deviceResources->CreateDeviceResources();
@@ -72,8 +77,35 @@ void Game::Update(DX::StepTimer const& timer)
 {
     float elapsedTime = float(timer.GetElapsedSeconds());
 
-    // TODO: Add your game logic here.
+    // Add your game logic here.
     elapsedTime;
+
+    // Handle controller input for exit
+    const auto pad = m_gamePad->GetState(0);
+    if (pad.IsConnected())
+    {
+        m_gamePadButtons.Update(pad);
+
+        if (pad.IsViewPressed())
+        {
+            ExitGame();
+        }
+    }
+    else
+    {
+        m_gamePadButtons.Reset();
+    }
+
+    auto kb = m_keyboard->GetState();
+    m_keyboardButtons.Update(kb);
+
+    if (kb.Escape)
+    {
+        ExitGame();
+    }
+
+    auto mouse = m_mouse->GetState();
+    m_mouseButtons.Update(mouse);
 }
 #pragma endregion
 
@@ -178,7 +210,9 @@ void Game::OnResuming()
 {
     m_timer.ResetElapsedTime();
 
-    // TODO: Game is being power-resumed (or returning from minimize).
+    m_gamePadButtons.Reset();
+    m_keyboardButtons.Reset();
+    m_mouseButtons.Reset();
 }
 
 void Game::OnWindowMoved()
