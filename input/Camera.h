@@ -15,6 +15,8 @@ public:
 private:
 	float m_yaw; // rotates along y axis
 	float m_pitch; // rotates along x axis
+	float m_mouseX;
+	float m_mouseY;
 	DirectX::XMFLOAT4 m_cameraPos;
 
 	static constexpr float DEFAULT_SPEED = 3.0f;
