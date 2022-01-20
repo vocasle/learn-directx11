@@ -6,6 +6,7 @@
 
 #include "DeviceResources.h"
 #include "StepTimer.h"
+#include "Camera.h"
 
 #include <Keyboard.h>
 #include <GamePad.h>
@@ -74,7 +75,6 @@ private:
     // These computed values will be loaded into a ConstantBuffer
     // during Render
     DirectX::XMFLOAT4X4                        m_worldMatrix;
-    DirectX::XMFLOAT4X4                        m_viewMatrix;
     DirectX::XMFLOAT4X4                        m_projectionMatrix;
 
     // Input devices
@@ -85,4 +85,7 @@ private:
     DirectX::GamePad::ButtonStateTracker    m_gamePadButtons;
     DirectX::Keyboard::KeyboardStateTracker m_keyboardButtons;
     DirectX::Mouse::ButtonStateTracker      m_mouseButtons;
+
+    // Camera
+    std::unique_ptr<Camera> m_camera;
 };

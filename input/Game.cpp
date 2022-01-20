@@ -45,6 +45,9 @@ void Game::Initialize(HWND window, int width, int height)
     m_gamePad = std::make_unique<GamePad>();
     m_keyboard = std::make_unique<Keyboard>();
     m_mouse = std::make_unique<Mouse>();
+    m_mouse->SetWindow(window);
+    // Initialize camera
+    m_camera = std::make_unique<Camera>();
 
     m_deviceResources->SetWindow(window, width, height);
 
@@ -106,6 +109,9 @@ void Game::Update(DX::StepTimer const& timer)
 
     auto mouse = m_mouse->GetState();
     m_mouseButtons.Update(mouse);
+
+    // Update camera movement
+    m_camera->Update(elapsedTime);
 }
 #pragma endregion
 
@@ -141,7 +147,7 @@ void Game::Render()
     ConstantBuffer sceneParams = {};
     // For shaders compiled with default row-major we need to transpose matrices
     sceneParams.worldMatrix = XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix));
-    sceneParams.viewMatrix = XMMatrixTranspose(XMLoadFloat4x4(&m_viewMatrix));
+    sceneParams.viewMatrix = XMMatrixTranspose(m_camera->GetView());
     sceneParams.projectionMatrix = XMMatrixTranspose(XMLoadFloat4x4(&m_projectionMatrix));
     {
         D3D11_MAPPED_SUBRESOURCE mapped;
@@ -357,12 +363,6 @@ void Game::CreateDeviceDependentResources()
 
     // Initialize the world matrix
     XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
-
-    // Initialize the view matrix
-    static const XMVECTORF32 c_eye = { 0.0f, 4.0f, -10.0f, 0.0f };
-    static const XMVECTORF32 c_at = { 0.0f, 1.0f, 0.0f, 0.0f };
-    static const XMVECTORF32 c_up = { 0.0f, 1.0f, 0.0f, 0.0f };
-    XMStoreFloat4x4(&m_viewMatrix, XMMatrixLookAtLH(c_eye, c_at, c_up));
 }
 
 // Allocate all memory resources that change on a window SizeChanged event.
