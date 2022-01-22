@@ -18,6 +18,9 @@ private:
 	float m_mouseX;
 	float m_mouseY;
 	DirectX::XMFLOAT4 m_cameraPos;
+	const DirectX::XMFLOAT4 m_worldUp;
+	DirectX::XMFLOAT4 m_right;
+	DirectX::XMFLOAT4 m_at;
 
 	static constexpr float DEFAULT_SPEED = 3.0f;
 };
