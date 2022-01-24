@@ -45,11 +45,12 @@ void Game::Initialize(HWND window, int width, int height)
     m_gamePad = std::make_unique<GamePad>();
     m_keyboard = std::make_unique<Keyboard>();
     m_mouse = std::make_unique<Mouse>();
+    m_deviceResources->SetWindow(window, width, height);
     m_mouse->SetWindow(window);
+    //m_mouse->SetMode(Mouse::MODE_RELATIVE);
     // Initialize camera
     m_camera = std::make_unique<Camera>();
 
-    m_deviceResources->SetWindow(window, width, height);
 
     m_deviceResources->CreateDeviceResources();
     CreateDeviceDependentResources();
@@ -109,6 +110,16 @@ void Game::Update(DX::StepTimer const& timer)
 
     auto mouse = m_mouse->GetState();
     m_mouseButtons.Update(mouse);
+    //if (mouse.leftButton == Mouse::ButtonStateTracker::PRESSED)
+    //{
+    //    m_mouse->SetMode(Mouse::MODE_RELATIVE);
+    //}
+    //else
+    //{
+    //    m_mouse->SetMode(Mouse::MODE_ABSOLUTE);
+    //}
+
+    //assert(mouse.positionMode == Mouse::MODE_RELATIVE);
 
     // Update camera movement
     m_camera->Update(elapsedTime);
@@ -199,17 +210,20 @@ void Game::Clear()
 // Message handlers
 void Game::OnActivated()
 {
-    // TODO: Game is becoming active window.
+    // Game is becoming active window.
+    Mouse::Get().SetMode(Mouse::MODE_RELATIVE);
 }
 
 void Game::OnDeactivated()
 {
-    // TODO: Game is becoming background window.
+    // Game is becoming background window.
+    Mouse::Get().SetMode(Mouse::MODE_ABSOLUTE);
 }
 
 void Game::OnSuspending()
 {
-    // TODO: Game is being power-suspended (or minimized).
+    // Game is being power-suspended (or minimized).
+    Mouse::Get().SetMode(Mouse::MODE_ABSOLUTE);
 }
 
 void Game::OnResuming()
@@ -219,6 +233,7 @@ void Game::OnResuming()
     m_gamePadButtons.Reset();
     m_keyboardButtons.Reset();
     m_mouseButtons.Reset();
+    Mouse::Get().SetMode(Mouse::MODE_RELATIVE);
 }
 
 void Game::OnWindowMoved()
