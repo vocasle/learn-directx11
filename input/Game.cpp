@@ -47,7 +47,7 @@ void Game::Initialize(HWND window, int width, int height)
     m_mouse = std::make_unique<Mouse>();
     m_deviceResources->SetWindow(window, width, height);
     m_mouse->SetWindow(window);
-    //m_mouse->SetMode(Mouse::MODE_RELATIVE);
+    m_mouse->SetMode(Mouse::MODE_RELATIVE);
     // Initialize camera
     m_camera = std::make_unique<Camera>();
 
@@ -110,19 +110,9 @@ void Game::Update(DX::StepTimer const& timer)
 
     auto mouse = m_mouse->GetState();
     m_mouseButtons.Update(mouse);
-    //if (mouse.leftButton == Mouse::ButtonStateTracker::PRESSED)
-    //{
-    //    m_mouse->SetMode(Mouse::MODE_RELATIVE);
-    //}
-    //else
-    //{
-    //    m_mouse->SetMode(Mouse::MODE_ABSOLUTE);
-    //}
-
-    //assert(mouse.positionMode == Mouse::MODE_RELATIVE);
 
     // Update camera movement
-    m_camera->Update(elapsedTime);
+    m_camera->Update(elapsedTime, mouse);
 }
 #pragma endregion
 
@@ -211,19 +201,16 @@ void Game::Clear()
 void Game::OnActivated()
 {
     // Game is becoming active window.
-    Mouse::Get().SetMode(Mouse::MODE_RELATIVE);
 }
 
 void Game::OnDeactivated()
 {
     // Game is becoming background window.
-    Mouse::Get().SetMode(Mouse::MODE_ABSOLUTE);
 }
 
 void Game::OnSuspending()
 {
     // Game is being power-suspended (or minimized).
-    Mouse::Get().SetMode(Mouse::MODE_ABSOLUTE);
 }
 
 void Game::OnResuming()
@@ -233,7 +220,6 @@ void Game::OnResuming()
     m_gamePadButtons.Reset();
     m_keyboardButtons.Reset();
     m_mouseButtons.Reset();
-    Mouse::Get().SetMode(Mouse::MODE_RELATIVE);
 }
 
 void Game::OnWindowMoved()
