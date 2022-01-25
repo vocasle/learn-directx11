@@ -2,7 +2,7 @@
 
 - [X] Initialize D3D11 context
 
-- [ ] Process input and camera control
+- [X] Process input and camera control
 
 - [ ] Load simple model without animation (teapot, statue, car, plane, tank etc.)
 

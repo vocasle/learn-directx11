@@ -15,16 +15,17 @@ public:
 private:
 	float m_yaw; // rotates along y axis
 	float m_pitch; // rotates along x axis
-	float m_mouseX;
-	float m_mouseY;
+	int m_mouseX;
+	int m_mouseY;
 	DirectX::XMFLOAT4 m_cameraPos;
-	DirectX::XMFLOAT4 m_right;
+	DirectX::XMFLOAT4 m_left;
 	DirectX::XMFLOAT4 m_at;
 	DirectX::XMFLOAT4 m_up;
-	const DirectX::XMVECTORF32 m_worldUp;
+	const DirectX::XMFLOAT4 m_worldUp;
 	float m_sensivity;
 
 	void UpdateEulerAngles(const float delta, const DirectX::Mouse::State& mouse);
+	void UpdateCameraVectors();
 
 	static constexpr float DEFAULT_SPEED = 3.0f;
 	static constexpr float DEFAULT_SENSIVITY = 0.1f;

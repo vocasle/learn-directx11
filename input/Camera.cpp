@@ -36,43 +36,44 @@ std::string XMVectorToString(XMVECTOR v)
 Camera::Camera() : 
     m_yaw(XMConvertToRadians(90.0f)), 
     m_pitch(XMConvertToRadians(0.0f)), 
-    m_mouseX(0.0f), 
-    m_mouseY(0.0f), 
+    m_mouseX(0), 
+    m_mouseY(0), 
     m_cameraPos(1.0f, 1.0f, 10.0f, 0.0f),
-    m_right(1.0f, 0.0f, 0.0f, 0.0f),
+    m_left(1.0f, 0.0f, 0.0f, 0.0f),
     m_at(0.0f, 0.0f, 0.0f, 0.0f),
     m_up(0.0f, 1.0f, 0.0f, 0.0f),
-    m_worldUp{0.0f, 1.0f, 0.0f, 0.0f},
+    m_worldUp(0.0f, 1.0f, 0.0f, 0.0f),
     m_sensivity(DEFAULT_SENSIVITY)
 {
     const XMVECTOR cameraPos = XMLoadFloat4(&m_cameraPos);
     XMStoreFloat4(&m_at, XMVector4Normalize(-cameraPos));
+    UpdateCameraVectors();
 }
 
 void Camera::Update(float delta, const Mouse::State &mouse)
 {
     static float elapsedTime = 0.0f;
     elapsedTime += delta;
-    // TODO: Clean up the code
 
     if (m_mouseX != mouse.x || m_mouseY != mouse.y)
     {
-        //UpdateEulerAngles(delta, mouse);
+        UpdateEulerAngles(delta, mouse);
+        UpdateCameraVectors();
     }
 
     const float deltaSpeed = delta * DEFAULT_SPEED;
     const XMVECTOR at = XMLoadFloat4(&m_at);
     XMVECTOR cameraPos = XMLoadFloat4(&m_cameraPos);
-    const XMVECTOR right = XMLoadFloat4(&m_right);
+    const XMVECTOR left = XMLoadFloat4(&m_left);
     
     const auto kb = Keyboard::Get().GetState();
     if (kb.Left || kb.A)
     {
-        cameraPos += right * deltaSpeed;
+        cameraPos += left * deltaSpeed;
     }
     if (kb.Right || kb.D)
     {
-        cameraPos -= right * deltaSpeed;
+        cameraPos -= left * deltaSpeed;
     }
     if (kb.Up || kb.W)
     {
@@ -94,6 +95,7 @@ XMMATRIX Camera::GetView() const
         XMFloat4ToString(m_cameraPos).c_str(),
         XMFloat4ToString(m_up).c_str(),
         XMFloat4ToString(m_at).c_str());
+    
     return XMMatrixLookAtLH(cameraPos, cameraPos + c_at, c_up);
 }
 
@@ -104,8 +106,7 @@ void Camera::UpdateEulerAngles(const float delta, const Mouse::State& mouse)
         XMConvertToDegrees(m_pitch),
         XMConvertToDegrees(m_yaw));
 
-    constexpr float sensivity = 0.1f;
-    m_pitch += delta * static_cast<float>(mouse.y) * m_sensivity;
+    m_pitch -= delta * static_cast<float>(mouse.y) * m_sensivity; // reversed, because mouse y is from top to bottom, but World is bottom to top
     m_yaw += delta * static_cast<float>(mouse.x) * m_sensivity;
     m_mouseX = mouse.x;
     m_mouseY = mouse.y;
@@ -124,34 +125,31 @@ void Camera::UpdateEulerAngles(const float delta, const Mouse::State& mouse)
     {
         m_yaw += XM_2PI;
     }
+}
 
-    // temporary lock the pitch
-    m_pitch = 0.0f;
+void Camera::UpdateCameraVectors()
+{
+    DebugPrintf("Before: at=%s, left=%s, up=%s\n",
+        XMFloat4ToString(m_at).c_str(),
+        XMFloat4ToString(m_left).c_str(),
+        XMFloat4ToString(m_up).c_str());
 
     const float h = std::cos(m_pitch);
     m_at.x = h * std::cos(m_yaw);
     m_at.y = std::sin(m_pitch);
-    m_at.z = -h * std::sin(m_yaw);
-
-    DebugPrintf("Before: right=%s, up=%s\n",
-        XMFloat4ToString(m_right).c_str(),
-        XMFloat4ToString(m_up).c_str());
+    m_at.z = -h * std::sin(m_yaw); // z of the camera is facing oposite direction of World's Z axis
 
     XMVECTOR at = XMLoadFloat4(&m_at);
     at = XMVector4Normalize(at);
     XMStoreFloat4(&m_at, at);
-    XMVECTOR right = XMLoadFloat4(&m_right);
-    right = XMVector4Normalize(XMVector3Cross(at, m_worldUp));
-    XMStoreFloat4(&m_right, right);
-    const XMVECTOR up = XMVector4Normalize(XMVector3Cross(at, right));
-    XMStoreFloat4(&m_right, up);
+    const XMVECTOR worldUp = XMLoadFloat4(&m_worldUp);
+    const XMVECTOR left = XMVector4Normalize(XMVector3Cross(at, worldUp));
+    XMStoreFloat4(&m_left, left);
+    const XMVECTOR up = XMVector4Normalize(XMVector3Cross(left, at)); // we have left handed frame
+    XMStoreFloat4(&m_up, up);
 
-    DebugPrintf("After: right=%s, up=%s\n",
-        XMFloat4ToString(m_right).c_str(),
-        XMFloat4ToString(m_up).c_str());
-
-    DebugPrintf("After: at=%s, pitch=%f, yaw=%f\n", 
+    DebugPrintf("After: at=%s, left=%s, up=%s\n",
         XMFloat4ToString(m_at).c_str(),
-        XMConvertToDegrees(m_pitch),
-        XMConvertToDegrees(m_yaw));
-}
+        XMFloat4ToString(m_left).c_str(),
+        XMFloat4ToString(m_up).c_str());
+ }
