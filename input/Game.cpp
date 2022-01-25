@@ -168,6 +168,10 @@ void Game::Render()
     // Draw the cube indexed
     context->DrawIndexed(36, 0, 0);
 
+    // Change primitive topology to draw Axii
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+    context->DrawIndexed(6, 36, 0);
+
     m_deviceResources->PIXEndEvent();
 
     // Show the new frame.
@@ -291,7 +295,8 @@ void Game::CreateDeviceDependentResources()
         constexpr XMFLOAT4 Cyan = { 0.0f, 1.0f, 1.0f, 1.0f };
         constexpr XMFLOAT4 Magenta = { 1.0f, 0.0f, 1.0f, 1.0f };
         static constexpr XMFLOAT4 color = { 1.0f, 0.0f, 0.0f, 1.0f };
-        static constexpr Vertex s_vertexData[8] =
+        static constexpr unsigned int s_numVertices = 15;
+        static constexpr Vertex s_vertexData[s_numVertices] =
         {
             { XMFLOAT4(-1.0f, -1.0f, -1.0f, 1.0f), White }, // front bottom left
             { XMFLOAT4(-1.0f, +1.0f, -1.0f, 1.0f), Black }, // front top left
@@ -301,13 +306,21 @@ void Game::CreateDeviceDependentResources()
             { XMFLOAT4(-1.0f, +1.0f, +1.0f, 1.0f), Yellow }, // rear top left
             { XMFLOAT4(+1.0f, -1.0f, +1.0f, 1.0f), Magenta }, // rear bottom right
             { XMFLOAT4(+1.0f, +1.0f, +1.0f, 1.0f), Cyan }, // rear top right
+
+            // World Axii
+            {XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), Red}, // Origin
+            {XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), Green}, // Origin
+            {XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), Blue}, // Origin
+            {XMFLOAT4(0.0f, 10.0f, 0.0f, 1.0f), Red}, // Up
+            {XMFLOAT4(10.0f, 0.0f, 0.0f, 1.0f), Green}, // Right
+            {XMFLOAT4(0.0f, 0.0f, 10.0f, 1.0f), Blue}, // Front
         };
 
         D3D11_SUBRESOURCE_DATA initialData = {};
         initialData.pSysMem = s_vertexData;
 
         D3D11_BUFFER_DESC bufferDesc = {};
-        bufferDesc.ByteWidth = sizeof(Vertex) * 8;
+        bufferDesc.ByteWidth = sizeof(Vertex) * s_numVertices;
         bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
         bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         bufferDesc.StructureByteStride = sizeof(Vertex);
@@ -319,7 +332,8 @@ void Game::CreateDeviceDependentResources()
 
     // Create index buffer
     {
-        constexpr unsigned int s_indexData[36] = {
+        constexpr unsigned int s_numIndices = 42;
+        constexpr unsigned int s_indexData[s_numIndices] = {
             // front face
             0, 1, 2,
             1, 3, 2,
@@ -337,12 +351,17 @@ void Game::CreateDeviceDependentResources()
             3, 5, 7,
             // bottom face
             0, 2, 4,
-            2, 6, 4
+            2, 6, 4,
+
+            // Axii
+            8, 11, // Up
+            9, 12, // Right
+            10, 13 // Front
         };
 
         D3D11_BUFFER_DESC bufferDesc = {};
         bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-        bufferDesc.ByteWidth = sizeof(unsigned int) * 36;
+        bufferDesc.ByteWidth = sizeof(unsigned int) * s_numIndices;
         bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
         bufferDesc.StructureByteStride = 0;
 
