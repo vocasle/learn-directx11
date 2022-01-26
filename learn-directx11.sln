@@ -26,6 +26,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "model-loading", "model-load
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mipmap-textures", "mipmap-textures\mipmap-textures.vcxproj", "{ECD8BCF3-438C-4F69-B93C-8527310A4AE8}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lighting", "lighting\lighting.vcxproj", "{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -144,6 +146,18 @@ Global
 		{ECD8BCF3-438C-4F69-B93C-8527310A4AE8}.Release|x64.Build.0 = Release|x64
 		{ECD8BCF3-438C-4F69-B93C-8527310A4AE8}.Release|x86.ActiveCfg = Release|Win32
 		{ECD8BCF3-438C-4F69-B93C-8527310A4AE8}.Release|x86.Build.0 = Release|Win32
+		{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}.Debug|ARM64.ActiveCfg = Debug|x64
+		{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}.Debug|ARM64.Build.0 = Debug|x64
+		{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}.Debug|x64.ActiveCfg = Debug|x64
+		{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}.Debug|x64.Build.0 = Debug|x64
+		{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}.Debug|x86.ActiveCfg = Debug|Win32
+		{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}.Debug|x86.Build.0 = Debug|Win32
+		{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}.Release|ARM64.ActiveCfg = Release|x64
+		{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}.Release|ARM64.Build.0 = Release|x64
+		{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}.Release|x64.ActiveCfg = Release|x64
+		{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}.Release|x64.Build.0 = Release|x64
+		{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}.Release|x86.ActiveCfg = Release|Win32
+		{3F7C1CF7-19A0-45B3-9B57-EA1D3C7941BF}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
