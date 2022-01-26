@@ -2,6 +2,10 @@
 // Game.cpp
 //
 
+// TODO: Add support to draw axii by pressing some special key.
+// TODO: Add support to draw in wireframe/shaded modes
+// TODO: Cleanup vertex buffer, index buffer creation code
+
 #include "pch.h"
 #include "Game.h"
 
@@ -165,6 +169,19 @@ void Game::Render()
     // Set pixel shader
     context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 
+    // Experiment with rasterizer state
+    //D3D11_RASTERIZER_DESC rsDesc;
+    //ZeroMemory(&rsDesc, sizeof(D3D11_RASTERIZER_DESC));
+    //rsDesc.FillMode = D3D11_FILL_SOLID;
+    //rsDesc.CullMode = D3D11_CULL_BACK;
+    //rsDesc.FrontCounterClockwise = false;
+    ////rsDesc.DepthClipEnable = true;
+
+    //ComPtr<ID3D11RasterizerState> pRastState;
+    //DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateRasterizerState(&rsDesc, pRastState.ReleaseAndGetAddressOf()));
+    //context->RSSetState(pRastState.Get());
+
+
     // Draw teapot indexed
     context->DrawIndexed(m_model->GetFaces().size() * 3, 0, 0);
 
@@ -304,7 +321,7 @@ void Game::CreateDeviceDependentResources()
         vertices.reserve(positions.size());
         for (const Position& p : positions)
         {
-            vertices.push_back({ {p.X, p.Y, p.Z, 1.0f}, Gray });
+            vertices.push_back({ {p.X, p.Y, p.Z, 1.0f}, Black });
         }
 
         //static constexpr unsigned int s_numVertices = 15;
