@@ -2,6 +2,9 @@
 #include "Model.h"
 
 #include <fstream>
+#include <string>
+#include <iostream>
+#include <sstream>
 
 Model::Model()
 {
@@ -21,20 +24,49 @@ std::unique_ptr<Model> ParseObjectFile(std::fstream& f)
 	char ch;
 	Face face;
 	Position p;
+
+	std::string line;
+	std::istringstream in;
 	
-	while (!f.eof())
+	while (std::getline(f, line))
 	{
-		f >> ch;
-		if (ch == 'v')
+		in.str(line);
+		if (line.find("v ") != std::string::npos)
 		{
-			f >> p.X >> p.Y >> p.Z;
+			in >> ch >> p.X >> p.Y >> p.Z;
+			assert(ch == 'v');
 			positions.push_back(p);
 		}
-		else if (ch == 'f')
+		else if (line.find("f ") != std::string::npos)
 		{
-			f >> face.X >> face.Y >> face.Z;
-			faces.push_back(face);
+			// NOTE: Found by debugging. Indices in *.obj start from 1, not from 0!
+			if (line.find("/") != std::string::npos)
+			{
+				unsigned int v = 0;
+				unsigned int vt = 0;
+				unsigned int vn = 0;
+				in >> ch >> v >> ch >> vt >> ch >> vn;
+				face.X = v;
+				in >> v >> ch >> vt >> ch >> vn;
+				face.Y = v;
+				in >> v >> ch >> vt >> ch >> vn;
+				face.Z = v;
+				--face.X;
+				--face.Y;
+				--face.Z;
+				faces.push_back(face);
+			}
+			else
+			{
+				in >> ch >> face.X >> face.Y >> face.Z;
+				assert(ch == 'f');
+				--face.X;
+				--face.Y;
+				--face.Z;
+				faces.push_back(face);
+			}
 		}
+		in.clear();
 	}
 
 	return std::make_unique<Model>(positions, faces);
