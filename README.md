@@ -4,7 +4,7 @@
 
 - [X] Process input and camera control
 
-- [ ] Load simple model without animation (teapot, statue, car, plane, tank etc.)
+- [X] Load simple model without animation (teapot, statue, car, plane, tank etc.)
 
 - [ ] Load mip-mapped textures (diffuse, normal, specular, gloss)
 
@@ -72,7 +72,8 @@ where *l_s* is the specular light color, *m_s* is the specular material componen
 	k_s = max (v*r, 0)^p, when L * n > 0, or k_s = 0, when L * n <= 0.
 
 Here **L** is the unit light vector, **n** is the normal, k_s - coeficient that depends on
-exponent *p*. The more the *p* is the more sharply the light reflects of the surface.
+exponent *p*. The more the *p* is the more sharply the light reflects of the surface. **v**
+is a reflected ray of light.
 
 **v** is the unit vector that is given by
 
@@ -83,3 +84,11 @@ where **E** is the position of eye and **P** is the surface point.
 #### Phong lighting formula
 
 	LitColor = l_a ⊗ m_a + k_d * l_d ⊗ m_d + k_s * l_s ⊗ m_s = A + k_d * D + k_s * S
+
+Lighting with attenuation:
+
+	LitColor = A + (k_d * D + k_s * S) / (a_0 + a1 * d + a2 * d^2)
+
+where *d* is a distance from light source. We can calculate distance as length
+of vector **V** = **Q** - **P**, where **Q** is the position of light source, and
+**P** is the point on the surface that is lit by light source.
