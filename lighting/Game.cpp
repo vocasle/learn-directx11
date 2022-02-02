@@ -24,6 +24,7 @@ namespace
     {
         XMFLOAT4 position;
         XMFLOAT4 color;
+        XMFLOAT3 normal;
     };
 
     struct ConstantBuffer
@@ -33,7 +34,71 @@ namespace
         XMMATRIX projectionMatrix;
     };
 
+    struct Material
+    {
+        Material() { ZeroMemory(this, sizeof(Material)); }
+
+        XMFLOAT4 Ambient;
+        XMFLOAT4 Diffuse;
+        XMFLOAT4 Specular; // w = SpecPower
+        XMFLOAT4 Reflect;
+    };
+
+    struct DirectionalLight
+    {
+        DirectionalLight() { ZeroMemory(this, sizeof(DirectionalLight)); }
+
+        XMFLOAT4 Ambient;
+        XMFLOAT4 Diffuse;
+        XMFLOAT4 Specular;
+        XMFLOAT3 Direction;
+        float Pad;
+    };
+
+    struct PointLight
+    {
+        PointLight() { ZeroMemory(this, sizeof(PointLight)); }
+
+        XMFLOAT4 Ambient;
+        XMFLOAT4 Diffuse;
+        XMFLOAT4 Specular;
+
+        XMFLOAT3 Position;
+        float Range;
+
+        XMFLOAT3 Att;
+        float Pad;
+    };
+
+    struct SpotLight
+    {
+        SpotLight() { ZeroMemory(this, sizeof(SpotLight)); }
+
+        XMFLOAT4 Ambient;
+        XMFLOAT4 Diffuse;
+        XMFLOAT4 Specular;
+
+        XMFLOAT3 Position;
+        float Range;
+
+        XMFLOAT3 Direction;
+        float Spot;
+
+        XMFLOAT3 Att;
+        float Pad;
+    };
+
+    struct LightingData
+    {
+        DirectionalLight dirLight;
+        PointLight pointLight;
+        SpotLight spotLight;
+        XMVECTOR eyePos;
+        Material material;
+    };
+
     static_assert((sizeof(ConstantBuffer) % 16) == 0, "Constant buffer must always be 16-byte aligned");
+    static_assert((sizeof(LightingData) % 16) == 0, "Constant buffer must always be 16-byte aligned");
 }
 
 Game::Game() noexcept(false)
@@ -54,7 +119,7 @@ void Game::Initialize(HWND window, int width, int height)
     m_mouse->SetMode(Mouse::MODE_RELATIVE);
     // Initialize camera
     m_camera = std::make_unique<Camera>();
-    m_model = Model::LoadModel("../assets/head.obj");
+    m_model = Model::LoadModel("../assets/monkey.obj");
 
     m_deviceResources->CreateDeviceResources();
     CreateDeviceDependentResources();
@@ -161,9 +226,31 @@ void Game::Render()
         memcpy(mapped.pData, &sceneParams, sizeof(ConstantBuffer));
         context->Unmap(m_constantBuffer.Get(), 0);
     }
+    // Set lighting data cbuffer
+    LightingData lightingData = {};
+    lightingData.dirLight.Ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
+    lightingData.dirLight.Diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    lightingData.dirLight.Specular = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    lightingData.dirLight.Direction = XMFLOAT3(0.57735f, -0.57735f, 0.57735f);
+    XMVECTOR eyePos = XMLoadFloat4(&m_camera->GetPos());
+    lightingData.eyePos = eyePos;
+    lightingData.material.Ambient = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
+    lightingData.material.Diffuse = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
+    lightingData.material.Specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 16.0f);
+
+
+    {
+        D3D11_MAPPED_SUBRESOURCE mapped;
+        DX::ThrowIfFailed(context->Map(m_lightingData.Get(), 0,
+            D3D11_MAP_WRITE_DISCARD, 0, &mapped));
+        memcpy(mapped.pData, &lightingData, sizeof(LightingData));
+        context->Unmap(m_lightingData.Get(), 0);
+    }
 
     // Vertex shader needs view and projection matrices to perform vertex transform
     context->VSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
+    // Pixel shader needs lighting data
+    context->PSSetConstantBuffers(0, 1, m_lightingData.GetAddressOf());
     // Set vertex shader
     context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
     // Set pixel shader
@@ -183,7 +270,7 @@ void Game::Render()
 
 
     // Draw teapot indexed
-    context->DrawIndexed(m_model->GetFaces().size() * 3, 0, 0);
+    context->DrawIndexed(m_model->GetFaces().size(), 0, 0);
 
     // Draw the cube indexed
     //context->DrawIndexed(36, 0, 0);
@@ -293,9 +380,10 @@ void Game::CreateDeviceDependentResources()
                 nullptr, m_pixelShader.ReleaseAndGetAddressOf()));
 
         // Create input layout
-        static constexpr D3D11_INPUT_ELEMENT_DESC s_inputElementDesc[2] = {
+        static constexpr D3D11_INPUT_ELEMENT_DESC s_inputElementDesc[3] = {
             {"SV_Position", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0}
+            {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0},
+            {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0}
         };
 
         DX::ThrowIfFailed(
@@ -319,9 +407,11 @@ void Game::CreateDeviceDependentResources()
         std::vector<Vertex> vertices;
         const auto& positions = m_model->GetPositions();
         vertices.reserve(positions.size());
-        for (const Position& p : positions)
+        for (unsigned int i = 0; i < positions.size(); ++i)
         {
-            vertices.push_back({ {p.X, p.Y, p.Z, 1.0f}, Black });
+            const Position& p = positions[i];
+            const Normal& n = m_model->GetNormalForIdx(i);
+            vertices.push_back({ {p.X, p.Y, p.Z, 1.0f}, Black, {n.X, n.Y, n.Z} });
         }
 
         //static constexpr unsigned int s_numVertices = 15;
@@ -395,9 +485,12 @@ void Game::CreateDeviceDependentResources()
 
         std::vector<unsigned int> indices;
         const auto& faces = m_model->GetFaces();
-        indices.reserve(faces.size() * 3);
-        for (const Face& f : faces)
+        assert(faces.size() % 3 == 0);
+        indices.reserve(faces.size());
+        // there is 3 indices per face, vertex texture, vertex normal
+        for (int i = 0; i < faces.size(); i += 3)
         {
+            const Face& f = faces[i];
             indices.push_back(f.X);
             indices.push_back(f.Y);
             indices.push_back(f.Z);
@@ -427,6 +520,15 @@ void Game::CreateDeviceDependentResources()
             m_constantBuffer.GetAddressOf()));
     }
 
+    // Create lighting data cbuffer
+    {
+        const CD3D11_BUFFER_DESC bufferDesc(sizeof(LightingData),
+            D3D11_BIND_CONSTANT_BUFFER,
+            D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+        DX::ThrowIfFailed(device->CreateBuffer(&bufferDesc, nullptr,
+            m_lightingData.GetAddressOf()));
+    }
+
     // Initialize the world matrix
     XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
 }
@@ -451,6 +553,7 @@ void Game::OnDeviceLost()
     m_vertexShader.Reset();
     m_pixelShader.Reset();
     m_constantBuffer.Reset();
+    m_lightingData.Reset();
 }
 
 void Game::OnDeviceRestored()

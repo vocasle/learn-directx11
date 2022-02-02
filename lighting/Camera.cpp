@@ -10,12 +10,14 @@ using namespace DirectX;
 
 void DebugPrintf(char* fmt...)
 {
+#if 0
     char out[512];
     va_list args;
     va_start(args, fmt);
     vsnprintf_s(out, 512, fmt, args);
     va_end(args);
     OutputDebugStringA(out);
+#endif
 }
 
 std::string XMFloat4ToString(XMFLOAT4 v)
@@ -97,6 +99,11 @@ XMMATRIX Camera::GetView() const
         XMFloat4ToString(m_at).c_str());
     
     return XMMatrixLookAtLH(cameraPos, cameraPos + c_at, c_up);
+}
+
+const DirectX::XMFLOAT4& Camera::GetPos() const
+{
+    return m_cameraPos;
 }
 
 void Camera::UpdateEulerAngles(const float delta, const Mouse::State& mouse)
