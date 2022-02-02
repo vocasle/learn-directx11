@@ -6,13 +6,10 @@
 #include <iostream>
 #include <sstream>
 
-Model::Model()
-{
-}
-
-Model::Model(const std::vector<Position>& positions, const std::vector<Face>& faces):
-	m_positions(positions),
-	m_faces(faces)
+Model::Model():
+	m_positions(),
+	m_faces(),
+	m_normals()
 {
 }
 
@@ -20,10 +17,12 @@ std::unique_ptr<Model> ParseObjectFile(std::fstream& f)
 {
 	std::vector<Face> faces;
 	std::vector<Position> positions;
+	std::vector<Normal> normals;
 
 	char ch;
 	Face face;
 	Position p;
+	Normal n;
 
 	std::string line;
 	std::istringstream in;
@@ -42,19 +41,15 @@ std::unique_ptr<Model> ParseObjectFile(std::fstream& f)
 			// NOTE: Found by debugging. Indices in *.obj start from 1, not from 0!
 			if (line.find("/") != std::string::npos)
 			{
-				unsigned int v = 0;
-				unsigned int vt = 0;
-				unsigned int vn = 0;
-				in >> ch >> v >> ch >> vt >> ch >> vn;
-				face.X = v;
-				in >> v >> ch >> vt >> ch >> vn;
-				face.Y = v;
-				in >> v >> ch >> vt >> ch >> vn;
-				face.Z = v;
-				--face.X;
-				--face.Y;
-				--face.Z;
-				faces.push_back(face);
+				unsigned int v[3] = {0, 0, 0};
+				unsigned int vt[3] = { 0, 0, 0 };
+				unsigned int vn[3] = { 0, 0, 0 };
+				in >> ch >> v[0] >> ch >> vt[0] >> ch >> vn[0];
+				in >> v[1] >> ch >> vt[1] >> ch >> vn[1];
+				in >> v[2] >> ch >> vt[2] >> ch >> vn[2];
+				faces.emplace_back(--v[0], --v[1], --v[2]);
+				faces.emplace_back(--vt[0], --vt[1], --vt[2]);
+				faces.emplace_back(--vn[0], --vn[1], --vn[2]);
 			}
 			else
 			{
@@ -66,10 +61,16 @@ std::unique_ptr<Model> ParseObjectFile(std::fstream& f)
 				faces.push_back(face);
 			}
 		}
+		else if (line.find("vn ") != std::string::npos)
+		{
+			in >> ch >> ch >> n.X >> n.Y >> n.Z;
+			assert(ch == 'n');
+			normals.push_back(n);
+		}
 		in.clear();
 	}
 
-	return std::make_unique<Model>(positions, faces);
+	return std::make_unique<Model>(std::move(positions), std::move(faces), std::move(normals));
 }
 
 std::unique_ptr<Model> Model::LoadModel(const std::string& filepath)
@@ -92,3 +93,33 @@ const std::vector<Face>& Model::GetFaces() const
 	return m_faces;
 }
 
+const std::vector<Normal>& Model::GetNormals() const
+{
+	return m_normals;
+}
+
+const bool Model::HasNormalFaces() const
+{
+	return !m_normals.empty();
+}
+
+const Normal& Model::GetNormalForIdx(unsigned int i) const
+{
+	return m_normals[i];
+}
+
+Model::Model(std::vector<Position>&& positions,
+	std::vector<Face>&& faces, 
+	std::vector<Normal>&& normals):
+	m_positions(positions),
+	m_faces(faces),
+	m_normals(normals)
+{
+}
+
+Face::Face(unsigned int x, unsigned int y, unsigned int z):
+	X(x),
+	Y(y),
+	Z(z)
+{
+}
