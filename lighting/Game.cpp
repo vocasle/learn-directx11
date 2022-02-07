@@ -219,6 +219,8 @@ void Game::Render()
     sceneParams.worldMatrix = XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix));
     sceneParams.viewMatrix = XMMatrixTranspose(m_camera->GetView());
     sceneParams.projectionMatrix = XMMatrixTranspose(XMLoadFloat4x4(&m_projectionMatrix));
+    //sceneParams.viewMatrix = XMMatrixIdentity();
+
     {
         D3D11_MAPPED_SUBRESOURCE mapped;
         DX::ThrowIfFailed(context->Map(m_constantBuffer.Get(), 0,
@@ -260,9 +262,9 @@ void Game::Render()
     //D3D11_RASTERIZER_DESC rsDesc;
     //ZeroMemory(&rsDesc, sizeof(D3D11_RASTERIZER_DESC));
     //rsDesc.FillMode = D3D11_FILL_SOLID;
-    //rsDesc.CullMode = D3D11_CULL_BACK;
+    //rsDesc.CullMode = D3D11_CULL_NONE;
     //rsDesc.FrontCounterClockwise = false;
-    ////rsDesc.DepthClipEnable = true;
+    //rsDesc.DepthClipEnable = false;
 
     //ComPtr<ID3D11RasterizerState> pRastState;
     //DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateRasterizerState(&rsDesc, pRastState.ReleaseAndGetAddressOf()));
@@ -270,7 +272,9 @@ void Game::Render()
 
 
     // Draw teapot indexed
-    context->DrawIndexed(m_model->GetFaces().size(), 0, 0);
+    //context->DrawIndexed(m_model->GetFaces().size(), 0, 0);
+    //context->Draw(36, 0);
+    context->DrawIndexed(m_model->GetFaces().size() * 3, 0, 0);
 
     // Draw the cube indexed
     //context->DrawIndexed(36, 0, 0);
@@ -405,14 +409,18 @@ void Game::CreateDeviceDependentResources()
         static constexpr XMFLOAT4 color = { 1.0f, 0.0f, 0.0f, 1.0f };
         constexpr XMFLOAT4 Gray = { 0xb7, 0xb7, 0xa4, 1.0f };
         std::vector<Vertex> vertices;
-        const auto& positions = m_model->GetPositions();
-        vertices.reserve(positions.size());
-        for (unsigned int i = 0; i < positions.size(); ++i)
+        vertices.reserve(m_model->GetPositions().size());
+        for (unsigned int i = 0; i < m_model->GetPositions().size(); ++i)
         {
-            const Position& p = positions[i];
-            const Normal& n = m_model->GetNormalForIdx(i);
-            vertices.push_back({ {p.X, p.Y, p.Z, 1.0f}, Black, {n.X, n.Y, n.Z} });
+            const Position& p = m_model->GetPositions()[i];
+            const Normal& n = m_model->GetNormals()[i];
+            vertices.push_back({
+                XMFLOAT4(p.X, p.Y, p.Z, 1.0f),
+                Black,
+                XMFLOAT3(n.X, n.Y, n.Z)
+                });
         }
+        
 
         //static constexpr unsigned int s_numVertices = 15;
         //static constexpr Vertex s_vertexData[s_numVertices] =
@@ -485,15 +493,13 @@ void Game::CreateDeviceDependentResources()
 
         std::vector<unsigned int> indices;
         const auto& faces = m_model->GetFaces();
-        assert(faces.size() % 3 == 0);
         indices.reserve(faces.size());
-        // there is 3 indices per face, vertex texture, vertex normal
-        for (int i = 0; i < faces.size(); i += 3)
+        // there is 3 indices per face
+        for (unsigned int i = 0; i < faces.size(); ++i)
         {
-            const Face& f = faces[i];
-            indices.push_back(f.X);
-            indices.push_back(f.Y);
-            indices.push_back(f.Z);
+            indices.push_back(faces[i].X);
+            indices.push_back(faces[i].Y);
+            indices.push_back(faces[i].Z);
         }
 
         D3D11_BUFFER_DESC bufferDesc = {};
@@ -530,7 +536,11 @@ void Game::CreateDeviceDependentResources()
     }
 
     // Initialize the world matrix
+    XMMATRIX world = XMMatrixIdentity();
+    //XMFLOAT4 translate(0.0f, 0.0f, -10.0f, 0.0f);
+    /*XMMatrixTranslationFromVector(XMLoadFloat4(&translate));*/
     XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
+    //XMStoreFloat4x4(&m_worldMatrix, XMMatrixTranslationFromVector(XMLoadFloat4(&translate)));
 }
 
 // Allocate all memory resources that change on a window SizeChanged event.
@@ -540,7 +550,7 @@ void Game::CreateWindowSizeDependentResources()
     const RECT size = m_deviceResources->GetOutputSize();
     const XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV4,
         static_cast<float>(size.right) / static_cast<float>(size.bottom),
-        0.01f, 100.0f);
+        0.0001f, 1000.0f);
     XMStoreFloat4x4(&m_projectionMatrix, projection);
 }
 
