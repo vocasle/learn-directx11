@@ -40,7 +40,7 @@ Camera::Camera() :
     m_pitch(XMConvertToRadians(0.0f)), 
     m_mouseX(0), 
     m_mouseY(0), 
-    m_cameraPos(1.0f, 1.0f, 10.0f, 0.0f),
+    m_cameraPos(0.0f, 1.0f, 10.0f, 0.0f),
     m_left(1.0f, 0.0f, 0.0f, 0.0f),
     m_at(0.0f, 0.0f, 0.0f, 0.0f),
     m_up(0.0f, 1.0f, 0.0f, 0.0f),
