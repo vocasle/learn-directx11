@@ -26,6 +26,5 @@ Interpolants main(Vertex In)
     Out.position = mul(Out.position, mView);
     Out.position = mul(Out.position, mProjection);
     Out.normal = mul(Out.normal, mWorld);
-    Out.normal = mul(Out.normal, mView);
     return Out;
 }
