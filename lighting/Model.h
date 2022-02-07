@@ -40,8 +40,6 @@ public:
 	const std::vector<Position>& GetPositions() const;
 	const std::vector<Face>& GetFaces() const;
 	const std::vector<Normal>& GetNormals() const;
-	const bool HasNormalFaces() const;
-	const Normal& GetNormalForIdx(unsigned int i) const;
 
 private:
 

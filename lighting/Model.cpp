@@ -1,10 +1,12 @@
 #include "pch.h"
 #include "Model.h"
 
-#include <fstream>
 #include <string>
 #include <iostream>
-#include <sstream>
+
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 Model::Model():
 	m_positions(),
@@ -13,61 +15,51 @@ Model::Model():
 {
 }
 
-std::unique_ptr<Model> ParseObjectFile(std::fstream& f)
+std::unique_ptr<Model> ParseObjectFile(const std::string& filepath)
 {
-	std::vector<Face> faces;
-	std::vector<Position> positions;
-	std::vector<Normal> normals;
+	Assimp::Importer importer;
 
-	char ch;
-	Face face;
-	Position p;
-	Normal n;
-
-	std::string line;
-	std::istringstream in;
-	
-	while (std::getline(f, line))
+	const aiScene* scene = importer.ReadFile(filepath,
+		aiProcess_JoinIdenticalVertices |
+		aiProcess_ImproveCacheLocality |
+		aiProcess_FlipUVs |
+		aiProcess_GenNormals
+	);
+	if (!scene)
 	{
-		in.str(line);
-		if (line.find("v ") != std::string::npos)
+		std::cerr << "ERROR: Failed to import " << filepath << std::endl;
+		return nullptr;
+	}
+
+	assert(scene->mNumMeshes == 1); // for now we support only one mesh
+	
+	std::vector<Position> positions;
+	const aiMesh* mesh = scene->mMeshes[0];
+	positions.reserve(mesh->mNumVertices);
+	for (unsigned int i = 0; i < mesh->mNumVertices; ++i)
+	{
+		positions.push_back({ mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z });
+	}
+
+	std::vector<Normal> normals;
+	if (mesh->HasNormals())
+	{
+		normals.reserve(mesh->mNumVertices);
+		for (unsigned int i = 0; i < mesh->mNumVertices; ++i)
 		{
-			in >> ch >> p.X >> p.Y >> p.Z;
-			assert(ch == 'v');
-			positions.push_back(p);
+			normals.push_back({ mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z });
 		}
-		else if (line.find("f ") != std::string::npos)
-		{
-			// NOTE: Found by debugging. Indices in *.obj start from 1, not from 0!
-			if (line.find("/") != std::string::npos)
-			{
-				unsigned int v[3] = {0, 0, 0};
-				unsigned int vt[3] = { 0, 0, 0 };
-				unsigned int vn[3] = { 0, 0, 0 };
-				in >> ch >> v[0] >> ch >> vt[0] >> ch >> vn[0];
-				in >> v[1] >> ch >> vt[1] >> ch >> vn[1];
-				in >> v[2] >> ch >> vt[2] >> ch >> vn[2];
-				faces.emplace_back(--v[0], --v[1], --v[2]);
-				faces.emplace_back(--vt[0], --vt[1], --vt[2]);
-				faces.emplace_back(--vn[0], --vn[1], --vn[2]);
-			}
-			else
-			{
-				in >> ch >> face.X >> face.Y >> face.Z;
-				assert(ch == 'f');
-				--face.X;
-				--face.Y;
-				--face.Z;
-				faces.push_back(face);
-			}
-		}
-		else if (line.find("vn ") != std::string::npos)
-		{
-			in >> ch >> ch >> n.X >> n.Y >> n.Z;
-			assert(ch == 'n');
-			normals.push_back(n);
-		}
-		in.clear();
+	}
+
+	std::vector<Face> faces;
+	faces.reserve(mesh->mNumFaces);
+
+	for (unsigned int i = 0; i < mesh->mNumFaces; ++i)
+	{
+		assert(mesh->mFaces[i].mNumIndices == 3); // we support triangulated meshes only
+		faces.push_back({ mesh->mFaces[i].mIndices[0],
+			mesh->mFaces[i].mIndices[1] ,
+			mesh->mFaces[i].mIndices[2] });
 	}
 
 	return std::make_unique<Model>(std::move(positions), std::move(faces), std::move(normals));
@@ -75,12 +67,7 @@ std::unique_ptr<Model> ParseObjectFile(std::fstream& f)
 
 std::unique_ptr<Model> Model::LoadModel(const std::string& filepath)
 {
-	if (auto f = std::fstream(filepath))
-	{
-		return ParseObjectFile(f);
-	}
-	assert(false && "Failed to load model, because *.obj file not found!");
-	return std::make_unique<Model>();
+	return ParseObjectFile(filepath);
 }
 
 const std::vector<Position>& Model::GetPositions() const
@@ -96,16 +83,6 @@ const std::vector<Face>& Model::GetFaces() const
 const std::vector<Normal>& Model::GetNormals() const
 {
 	return m_normals;
-}
-
-const bool Model::HasNormalFaces() const
-{
-	return !m_normals.empty();
-}
-
-const Normal& Model::GetNormalForIdx(unsigned int i) const
-{
-	return m_normals[i];
 }
 
 Model::Model(std::vector<Position>&& positions,
