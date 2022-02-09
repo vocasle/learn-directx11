@@ -11,6 +11,7 @@ public:
 	Camera();
 	void Update(float delta, const DirectX::Mouse::State& mouse);
 	DirectX::XMMATRIX GetView() const;
+	const DirectX::XMFLOAT4& GetPos() const;
 
 private:
 	float m_yaw; // rotates along y axis

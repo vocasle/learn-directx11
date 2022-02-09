@@ -8,7 +8,7 @@
 
 - [ ] Load mip-mapped textures (diffuse, normal, specular, gloss)
 
-- [ ] Calculate Phong lighting from direct and point lights in the pixel shader
+- [X] Calculate Phong lighting from direct and point lights in the pixel shader
 
 - [ ] Particle System (10000+ particles)
 
