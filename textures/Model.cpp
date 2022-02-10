@@ -61,8 +61,17 @@ std::unique_ptr<Model> ParseObjectFile(const std::string& filepath)
 			mesh->mFaces[i].mIndices[1] ,
 			mesh->mFaces[i].mIndices[2] });
 	}
+	std::vector<TextCoord> textCoords;
+	if (mesh->HasTextureCoords(0))
+	{
+		textCoords.reserve(mesh->mNumVertices);
+		for (unsigned int i = 0; i < mesh->mNumVertices; ++i)
+		{
+			textCoords.push_back({ mesh->mTextureCoords[i]->x, mesh->mTextureCoords[i]->y });
+		}
+	}
 
-	return std::make_unique<Model>(std::move(positions), std::move(faces), std::move(normals));
+	return std::make_unique<Model>(std::move(positions), std::move(faces), std::move(normals), std::move(textCoords));
 }
 
 std::unique_ptr<Model> Model::LoadModel(const std::string& filepath)
@@ -85,12 +94,19 @@ const std::vector<Normal>& Model::GetNormals() const
 	return m_normals;
 }
 
+const std::vector<TextCoord>& Model::GetTextCoords() const
+{
+	return m_textCoords;
+}
+
 Model::Model(std::vector<Position>&& positions,
 	std::vector<Face>&& faces, 
-	std::vector<Normal>&& normals):
+	std::vector<Normal>&& normals,
+	std::vector<TextCoord>&& textCoords):
 	m_positions(positions),
 	m_faces(faces),
-	m_normals(normals)
+	m_normals(normals),
+	m_textCoords(textCoords)
 {
 }
 
