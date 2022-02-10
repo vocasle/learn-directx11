@@ -1,15 +1,15 @@
 struct Vertex
 {
-    float4 position     : SV_Position;
-    float4 color        : COLOR0;
+    float3 position     : SV_Position;
     float3 normal       : NORMAL;
+    float2 textCoord    : TEXTCOORD;
 };
 
 struct PSInput
 {
     float4 position     : SV_Position;
-    float4 color        : COLOR0;
     float3 normal       : NORMAL;
+    float2 textCoord    : TEXTCOORD;
     float3 positionW    : POSITION;
 };
 
@@ -23,13 +23,12 @@ cbuffer Constants : register(b0)
 PSInput main(Vertex In)
 {
     PSInput Out;
-    Out.position = In.position;
     Out.normal = In.normal;
-    Out.color = In.color;
-    Out.position = mul(Out.position, mWorld);
+    Out.textCoord = In.textCoord;
+    Out.position = mul(float4(In.position, 1.0f), mWorld);
     Out.position = mul(Out.position, mView);
     Out.position = mul(Out.position, mProjection);
-    Out.normal = mul(Out.normal, mWorld);
-    Out.positionW = mul(In.position, mWorld).xyz;
+    Out.normal = mul(float4(Out.normal, 0.0f), mWorld).xyz;
+    Out.positionW = mul(float4(In.position, 1.0f), mWorld).xyz;
     return Out;
 }

@@ -50,14 +50,15 @@ cbuffer LightingData
     SpotLight spotLight;
     float3 eyePos;
     Material material;
+    Texture2D diffuseMap;
 };
 
 struct PSInput
 {
-    float4 position : SV_Position;
-    float4 color    : COLOR0;
-    float3 normal   : NORMAL;
-    float3 positionW : POSITION;
+    float4 position     : SV_Position;
+    float3 normal       : NORMAL;
+    float2 textCoord    : TEXTCOORD;
+    float3 positionW    : POSITION;
 };
 
 struct Pixel
@@ -190,7 +191,7 @@ Pixel main(PSInput In)
 
     // Interpolated normal could be unnormalized
     In.normal = normalize(In.normal);
-    float3 toEye = normalize(eyePos - float3(In.positionW.x, In.positionW.y, In.positionW.z));
+    float3 toEye = normalize(eyePos - In.positionW);
 
     ComputeDirectionalLight(material, dirLight, In.normal, toEye,
         A, D, S);
