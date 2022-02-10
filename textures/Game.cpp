@@ -11,95 +11,14 @@
 
 #include "ATGColors.h"
 #include "ReadData.h"
+#include "DDSTextureLoader.h"
+#include "stb_image.h"
 
 extern void ExitGame() noexcept;
 
 using namespace DirectX;
 
 using Microsoft::WRL::ComPtr;
-
-namespace
-{
-    struct Vertex
-    {
-        XMFLOAT4 position;
-        XMFLOAT4 color;
-        XMFLOAT3 normal;
-    };
-
-    struct ConstantBuffer
-    {
-        XMMATRIX worldMatrix;
-        XMMATRIX viewMatrix;
-        XMMATRIX projectionMatrix;
-    };
-
-    struct Material
-    {
-        Material() { ZeroMemory(this, sizeof(Material)); }
-
-        XMFLOAT4 Ambient;
-        XMFLOAT4 Diffuse;
-        XMFLOAT4 Specular; // w = SpecPower
-        XMFLOAT4 Reflect;
-    };
-
-    struct DirectionalLight
-    {
-        DirectionalLight() { ZeroMemory(this, sizeof(DirectionalLight)); }
-
-        XMFLOAT4 Ambient;
-        XMFLOAT4 Diffuse;
-        XMFLOAT4 Specular;
-        XMFLOAT3 Direction;
-        float Pad;
-    };
-
-    struct PointLight
-    {
-        PointLight() { ZeroMemory(this, sizeof(PointLight)); }
-
-        XMFLOAT4 Ambient;
-        XMFLOAT4 Diffuse;
-        XMFLOAT4 Specular;
-
-        XMFLOAT3 Position;
-        float Range;
-
-        XMFLOAT3 Att;
-        float Pad;
-    };
-
-    struct SpotLight
-    {
-        SpotLight() { ZeroMemory(this, sizeof(SpotLight)); }
-
-        XMFLOAT4 Ambient;
-        XMFLOAT4 Diffuse;
-        XMFLOAT4 Specular;
-
-        XMFLOAT3 Position;
-        float Range;
-
-        XMFLOAT3 Direction;
-        float Spot;
-
-        XMFLOAT3 Att;
-        float Pad;
-    };
-
-    struct LightingData
-    {
-        DirectionalLight dirLight;
-        PointLight pointLight;
-        SpotLight spotLight;
-        XMVECTOR eyePos;
-        Material material;
-    };
-
-    static_assert((sizeof(ConstantBuffer) % 16) == 0, "Constant buffer must always be 16-byte aligned");
-    static_assert((sizeof(LightingData) % 16) == 0, "Constant buffer must always be 16-byte aligned");
-}
 
 Game::Game() noexcept(false)
 {
@@ -188,6 +107,26 @@ void Game::Update(DX::StepTimer const& timer)
 
     // Update camera movement
     m_camera->Update(elapsedTime, mouse);
+
+    // Update per frame cbuffers
+    {
+        XMVECTOR eyePos = XMLoadFloat4(&m_camera->GetPos());
+        m_gLightingData.eyePos = eyePos;
+        static constexpr float r = 3.0f;
+        m_gLightingData.pointLight.Position = XMFLOAT3(r * sin(x), r, r * cos(x));
+        const XMFLOAT4& cameraPos = m_camera->GetPos();
+        m_gLightingData.spotLight.Position = XMFLOAT3(cameraPos.x, cameraPos.y, cameraPos.z);
+        const XMFLOAT4 cameraDir = m_camera->GetAt();
+        m_gLightingData.spotLight.Direction = XMFLOAT3(cameraDir.x, cameraDir.y, cameraDir.z);
+    }
+
+    {
+        // Set the per-frame constants
+        // For shaders compiled with default row-major we need to transpose matrices
+        m_gSceneParams.worldMatrix = XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix));
+        m_gSceneParams.viewMatrix = XMMatrixTranspose(m_camera->GetView());
+        m_gSceneParams.projectionMatrix = XMMatrixTranspose(XMLoadFloat4x4(&m_projectionMatrix));
+    }
 }
 #pragma endregion
 
@@ -219,55 +158,20 @@ void Game::Render()
     // Set the primitive topology
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    // Set the per-frame constants
-    ConstantBuffer sceneParams = {};
-    // For shaders compiled with default row-major we need to transpose matrices
-    sceneParams.worldMatrix = XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix));
-    sceneParams.viewMatrix = XMMatrixTranspose(m_camera->GetView());
-    sceneParams.projectionMatrix = XMMatrixTranspose(XMLoadFloat4x4(&m_projectionMatrix));
-    //sceneParams.viewMatrix = XMMatrixIdentity();
-
     {
         D3D11_MAPPED_SUBRESOURCE mapped;
         DX::ThrowIfFailed(context->Map(m_constantBuffer.Get(), 0,
             D3D11_MAP_WRITE_DISCARD, 0, &mapped));
-        memcpy(mapped.pData, &sceneParams, sizeof(ConstantBuffer));
+        memcpy(mapped.pData, &m_gSceneParams, sizeof(SceneParams));
         context->Unmap(m_constantBuffer.Get(), 0);
     }
-    // Set lighting data cbuffer
-    LightingData lightingData = {};
-    XMVECTOR eyePos = XMLoadFloat4(&m_camera->GetPos());
-    lightingData.eyePos = eyePos;
-    lightingData.material.Ambient = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
-    lightingData.material.Diffuse = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
-    lightingData.material.Specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 16.0f);
-    lightingData.dirLight.Ambient = XMFLOAT4(0.2f, 0.0f, 0.0f, 1.0f);
-    lightingData.dirLight.Diffuse = XMFLOAT4(0.5f, 0.0f, 0.0f, 1.0f);
-    lightingData.dirLight.Specular = XMFLOAT4(0.5f, 0.0f, 0.0f, 1.0f);
-    lightingData.dirLight.Direction = XMFLOAT3(0.57735f, -0.57735f, 0.57735f);
-    lightingData.pointLight.Ambient = XMFLOAT4(0.0f, 0.3f, 0.0f, 1.0f);
-    lightingData.pointLight.Diffuse = XMFLOAT4(0.0f, 0.7f, 0.0f, 1.0f);
-    lightingData.pointLight.Specular = XMFLOAT4(0.0f, 0.7f, 0.0f, 1.0f);
-    lightingData.pointLight.Att = XMFLOAT3(0.0f, 0.1f, 0.0f);
-    lightingData.pointLight.Range = 25.0f;
-    static constexpr float r = 3.0f;
-    lightingData.pointLight.Position = XMFLOAT3(r * sin(x), r, r * cos(x));
-    lightingData.spotLight.Ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-    lightingData.spotLight.Diffuse = XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
-    lightingData.spotLight.Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    lightingData.spotLight.Att = XMFLOAT3(1.0f, 0.0f, 0.0f);
-    lightingData.spotLight.Spot = 96.0f;
-    lightingData.spotLight.Range = 10000.0f;
-    const XMFLOAT4& cameraPos = m_camera->GetPos();
-    lightingData.spotLight.Position = XMFLOAT3(cameraPos.x, cameraPos.y, cameraPos.z);
-    const XMFLOAT4 cameraDir = m_camera->GetAt();
-    lightingData.spotLight.Direction = XMFLOAT3(cameraDir.x, cameraDir.y, cameraDir.z);
 
+    // Set lighting data cbuffer
     {
         D3D11_MAPPED_SUBRESOURCE mapped;
         DX::ThrowIfFailed(context->Map(m_lightingData.Get(), 0,
             D3D11_MAP_WRITE_DISCARD, 0, &mapped));
-        memcpy(mapped.pData, &lightingData, sizeof(LightingData));
+        memcpy(mapped.pData, &m_gLightingData, sizeof(LightingData));
         context->Unmap(m_lightingData.Get(), 0);
     }
 
@@ -407,9 +311,9 @@ void Game::CreateDeviceDependentResources()
 
         // Create input layout
         static constexpr D3D11_INPUT_ELEMENT_DESC s_inputElementDesc[3] = {
-            {"SV_Position", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0}
+            {"SV_Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+            {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+            {"TEXTCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0}
         };
 
         DX::ThrowIfFailed(
@@ -420,50 +324,30 @@ void Game::CreateDeviceDependentResources()
 
     // Create vertex buffer
     {
-        constexpr XMFLOAT4 White = { 1.0f, 1.0f, 1.0f, 1.0f };
-        constexpr XMFLOAT4 Black = { 0.0f, 0.0f, 0.0f, 1.0f };
-        constexpr XMFLOAT4 Red = { 1.0f, 0.0f, 0.0f, 1.0f };
-        constexpr XMFLOAT4 Green = { 0.0f, 1.0f, 0.0f, 1.0f };
-        constexpr XMFLOAT4 Blue = { 0.0f, 0.0f, 1.0f, 1.0f };
-        constexpr XMFLOAT4 Yellow = { 1.0f, 1.0f, 0.0f, 1.0f };
-        constexpr XMFLOAT4 Cyan = { 0.0f, 1.0f, 1.0f, 1.0f };
-        constexpr XMFLOAT4 Magenta = { 1.0f, 0.0f, 1.0f, 1.0f };
-        static constexpr XMFLOAT4 color = { 1.0f, 0.0f, 0.0f, 1.0f };
-        constexpr XMFLOAT4 Gray = { 0xb7, 0xb7, 0xa4, 1.0f };
         std::vector<Vertex> vertices;
         vertices.reserve(m_model->GetPositions().size());
         for (unsigned int i = 0; i < m_model->GetPositions().size(); ++i)
         {
             const Position& p = m_model->GetPositions()[i];
             const Normal& n = m_model->GetNormals()[i];
-            vertices.push_back({
-                XMFLOAT4(p.X, p.Y, p.Z, 1.0f),
-                Black,
-                XMFLOAT3(n.X, n.Y, n.Z)
-                });
+            if (m_model->GetTextCoords().empty())
+            {
+                vertices.push_back({
+                    XMFLOAT3(p.X, p.Y, p.Z),
+                    XMFLOAT3(n.X, n.Y, n.Z),
+                    XMFLOAT2(0.0f, 0.0f)
+                    });
+            }
+            else
+            {
+                const TextCoord& tc = m_model->GetTextCoords()[i];
+                vertices.push_back({
+                    XMFLOAT3(p.X, p.Y, p.Z),
+                    XMFLOAT3(n.X, n.Y, n.Z),
+                    XMFLOAT2(tc.X, tc.Y)
+                    });
+            }
         }
-        
-
-        //static constexpr unsigned int s_numVertices = 15;
-        //static constexpr Vertex s_vertexData[s_numVertices] =
-        //{
-        //    { XMFLOAT4(-1.0f, -1.0f, -1.0f, 1.0f), White }, // front bottom left
-        //    { XMFLOAT4(-1.0f, +1.0f, -1.0f, 1.0f), Black }, // front top left
-        //    { XMFLOAT4(+1.0f, -1.0f, -1.0f, 1.0f), Green }, // front bottom right
-        //    { XMFLOAT4(+1.0f, +1.0f, -1.0f, 1.0f), Red }, // front top right
-        //    { XMFLOAT4(-1.0f, -1.0f, +1.0f, 1.0f), Blue }, // rear bottom left
-        //    { XMFLOAT4(-1.0f, +1.0f, +1.0f, 1.0f), Yellow }, // rear top left
-        //    { XMFLOAT4(+1.0f, -1.0f, +1.0f, 1.0f), Magenta }, // rear bottom right
-        //    { XMFLOAT4(+1.0f, +1.0f, +1.0f, 1.0f), Cyan }, // rear top right
-
-        //    // World Axii
-        //    {XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), Red}, // Origin
-        //    {XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), Green}, // Origin
-        //    {XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), Blue}, // Origin
-        //    {XMFLOAT4(0.0f, 10.0f, 0.0f, 1.0f), Red}, // Up
-        //    {XMFLOAT4(10.0f, 0.0f, 0.0f, 1.0f), Green}, // Right
-        //    {XMFLOAT4(0.0f, 0.0f, 10.0f, 1.0f), Blue}, // Front
-        //};
 
         D3D11_SUBRESOURCE_DATA initialData = {};
         //initialData.pSysMem = s_vertexData;
@@ -476,9 +360,6 @@ void Game::CreateDeviceDependentResources()
         bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         bufferDesc.StructureByteStride = sizeof(Vertex);
 
-        //DX::ThrowIfFailed(
-        //    device->CreateBuffer(&bufferDesc, &initialData,
-        //        m_vertexBuffer.ReleaseAndGetAddressOf()));
         DX::ThrowIfFailed(
             device->CreateBuffer(&bufferDesc, &initialData,
                 m_vertexBuffer.ReleaseAndGetAddressOf()));
@@ -486,33 +367,6 @@ void Game::CreateDeviceDependentResources()
 
     // Create index buffer
     {
-   //     constexpr unsigned int s_numIndices = 42;
-   //     constexpr unsigned int s_indexData[s_numIndices] = {
-   //         // front face
-   //         0, 1, 2,
-   //         1, 3, 2,
-   //         // back face
-   //         4, 6, 7,
-   //         4, 7, 5,
-   //         // left face
-   //         0, 4, 5,
-   //         0, 5, 1,
-   //         // right face
-			//2, 3, 6,
-   //         6, 3, 7,
-   //         // top face
-   //         1, 5, 3,
-   //         3, 5, 7,
-   //         // bottom face
-   //         0, 2, 4,
-   //         2, 6, 4,
-
-   //         // Axii
-   //         8, 11, // Up
-   //         9, 12, // Right
-   //         10, 13 // Front
-   //     };
-
         std::vector<unsigned int> indices;
         const auto& faces = m_model->GetFaces();
         indices.reserve(faces.size());
@@ -540,9 +394,14 @@ void Game::CreateDeviceDependentResources()
                 m_indexBuffer.ReleaseAndGetAddressOf()));
     }
 
+    // Create textures
+    {
+        LoadTexture(L"../assets/box.dds");
+    }
+
     // Create the constant buffer
     {
-        const CD3D11_BUFFER_DESC bufferDesc(sizeof(ConstantBuffer), D3D11_BIND_CONSTANT_BUFFER,
+        const CD3D11_BUFFER_DESC bufferDesc(sizeof(SceneParams), D3D11_BIND_CONSTANT_BUFFER,
             D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
         DX::ThrowIfFailed(device->CreateBuffer(&bufferDesc, nullptr,
             m_constantBuffer.GetAddressOf()));
@@ -555,6 +414,28 @@ void Game::CreateDeviceDependentResources()
             D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
         DX::ThrowIfFailed(device->CreateBuffer(&bufferDesc, nullptr,
             m_lightingData.GetAddressOf()));
+    }
+
+    // Create lighting data cbuffer source
+    {
+        m_gLightingData.material.Ambient = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
+        m_gLightingData.material.Diffuse = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
+        m_gLightingData.material.Specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 16.0f);
+        m_gLightingData.dirLight.Ambient = XMFLOAT4(0.2f, 0.0f, 0.0f, 1.0f);
+        m_gLightingData.dirLight.Diffuse = XMFLOAT4(0.5f, 0.0f, 0.0f, 1.0f);
+        m_gLightingData.dirLight.Specular = XMFLOAT4(0.5f, 0.0f, 0.0f, 1.0f);
+        m_gLightingData.dirLight.Direction = XMFLOAT3(0.57735f, -0.57735f, 0.57735f);
+        m_gLightingData.pointLight.Ambient = XMFLOAT4(0.0f, 0.3f, 0.0f, 1.0f);
+        m_gLightingData.pointLight.Diffuse = XMFLOAT4(0.0f, 0.7f, 0.0f, 1.0f);
+        m_gLightingData.pointLight.Specular = XMFLOAT4(0.0f, 0.7f, 0.0f, 1.0f);
+        m_gLightingData.pointLight.Att = XMFLOAT3(0.0f, 0.1f, 0.0f);
+        m_gLightingData.pointLight.Range = 25.0f;
+        m_gLightingData.spotLight.Ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+        m_gLightingData.spotLight.Diffuse = XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
+        m_gLightingData.spotLight.Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        m_gLightingData.spotLight.Att = XMFLOAT3(1.0f, 0.0f, 0.0f);
+        m_gLightingData.spotLight.Spot = 96.0f;
+        m_gLightingData.spotLight.Range = 10000.0f;
     }
 
     // Initialize the world matrix
@@ -574,6 +455,14 @@ void Game::CreateWindowSizeDependentResources()
         static_cast<float>(size.right) / static_cast<float>(size.bottom),
         0.0001f, 1000.0f);
     XMStoreFloat4x4(&m_projectionMatrix, projection);
+}
+
+void Game::LoadTexture(const wchar_t* filepath)
+{  
+    DX::ThrowIfFailed(CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), 
+        filepath,
+        reinterpret_cast<ID3D11Resource**>(m_texture.ReleaseAndGetAddressOf()),
+        m_textureView.ReleaseAndGetAddressOf()));
 }
 
 void Game::OnDeviceLost()
