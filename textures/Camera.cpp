@@ -106,6 +106,11 @@ const DirectX::XMFLOAT4& Camera::GetPos() const
     return m_cameraPos;
 }
 
+const DirectX::XMFLOAT4& Camera::GetAt() const
+{
+    return m_at;
+}
+
 void Camera::UpdateEulerAngles(const float delta, const Mouse::State& mouse)
 {
     DebugPrintf("Before: at=%s, pitch=%f, yaw=%f\n",

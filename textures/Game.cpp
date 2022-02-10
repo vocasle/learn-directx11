@@ -236,22 +236,32 @@ void Game::Render()
     }
     // Set lighting data cbuffer
     LightingData lightingData = {};
-    lightingData.dirLight.Ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
-    lightingData.dirLight.Diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-    lightingData.dirLight.Specular = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-    lightingData.dirLight.Direction = XMFLOAT3(0.57735f, -0.57735f, 0.57735f);
     XMVECTOR eyePos = XMLoadFloat4(&m_camera->GetPos());
     lightingData.eyePos = eyePos;
     lightingData.material.Ambient = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
     lightingData.material.Diffuse = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
     lightingData.material.Specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 16.0f);
-    lightingData.pointLight.Ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
-    lightingData.pointLight.Diffuse = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
-    lightingData.pointLight.Specular = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
+    lightingData.dirLight.Ambient = XMFLOAT4(0.2f, 0.0f, 0.0f, 1.0f);
+    lightingData.dirLight.Diffuse = XMFLOAT4(0.5f, 0.0f, 0.0f, 1.0f);
+    lightingData.dirLight.Specular = XMFLOAT4(0.5f, 0.0f, 0.0f, 1.0f);
+    lightingData.dirLight.Direction = XMFLOAT3(0.57735f, -0.57735f, 0.57735f);
+    lightingData.pointLight.Ambient = XMFLOAT4(0.0f, 0.3f, 0.0f, 1.0f);
+    lightingData.pointLight.Diffuse = XMFLOAT4(0.0f, 0.7f, 0.0f, 1.0f);
+    lightingData.pointLight.Specular = XMFLOAT4(0.0f, 0.7f, 0.0f, 1.0f);
     lightingData.pointLight.Att = XMFLOAT3(0.0f, 0.1f, 0.0f);
     lightingData.pointLight.Range = 25.0f;
     static constexpr float r = 3.0f;
-    lightingData.pointLight.Position = XMFLOAT3(r * sin(x), r / 2.0f, r * cos(z));
+    lightingData.pointLight.Position = XMFLOAT3(r * sin(x), r, r * cos(x));
+    lightingData.spotLight.Ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    lightingData.spotLight.Diffuse = XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
+    lightingData.spotLight.Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    lightingData.spotLight.Att = XMFLOAT3(1.0f, 0.0f, 0.0f);
+    lightingData.spotLight.Spot = 96.0f;
+    lightingData.spotLight.Range = 10000.0f;
+    const XMFLOAT4& cameraPos = m_camera->GetPos();
+    lightingData.spotLight.Position = XMFLOAT3(cameraPos.x, cameraPos.y, cameraPos.z);
+    const XMFLOAT4 cameraDir = m_camera->GetAt();
+    lightingData.spotLight.Direction = XMFLOAT3(cameraDir.x, cameraDir.y, cameraDir.z);
 
     {
         D3D11_MAPPED_SUBRESOURCE mapped;

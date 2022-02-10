@@ -12,6 +12,7 @@ public:
 	void Update(float delta, const DirectX::Mouse::State& mouse);
 	DirectX::XMMATRIX GetView() const;
 	const DirectX::XMFLOAT4& GetPos() const;
+	const DirectX::XMFLOAT4& GetAt() const;
 
 private:
 	float m_yaw; // rotates along y axis

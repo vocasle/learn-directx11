@@ -137,6 +137,46 @@ void ComputePointlLight(Material mat,
     specular *= att;
 }
 
+void ComputeSpotLight(Material mat, SpotLight sl,
+    float3 pos, float3 normal, float3 toEye,
+    out float4 ambient, out float4 diffuse, out float4 spec)
+{
+    // Initialize outputs.
+    ambient = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    diffuse = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    spec = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    // The vector from the surface to the light.
+    float3 lightVec = sl.Position - pos;
+    // The distance from surface to light.
+    float d = length(lightVec);
+    // Range test.
+    if (d > sl.Range)
+        return;
+    // Normalize the light vector.
+    lightVec = normalize(lightVec);
+    // Ambient term.
+    ambient = mat.Ambient * sl.Ambient;
+    // Add diffuse and specular term, provided the surface is in
+    // the line of site of the light.
+    float diffuseFactor = dot(lightVec, normal);
+    
+    if (diffuseFactor > 0.0f)
+    {
+        float3 v = reflect(-lightVec, normal);
+        float specFactor = pow(max(dot(v, toEye), 0.0f), mat.Specular.w);
+        diffuse = diffuseFactor * mat.Diffuse * sl.Diffuse;
+        spec = specFactor * mat.Specular * sl.Specular;
+    }
+    // Scale by spotlight factor and attenuate.
+    float spot = pow(max(dot(-lightVec, sl.Direction), 0.0f), sl.Spot);
+    // Scale by spotlight factor and attenuate.
+    float att = spot / dot(sl.Att, float3(1.0f, d,
+        d * d));
+    ambient *= spot;
+    diffuse *= att;
+    spec *= att;
+}
+
 Pixel main(PSInput In)
 {
     Pixel Out;
@@ -167,6 +207,17 @@ Pixel main(PSInput In)
         A,
         D,
         S);
+
+    ambient += A;
+    diffuse += D;
+    specular += S;
+
+    ComputeSpotLight(material,
+        spotLight,
+        In.positionW,
+        In.normal,
+        toEye,
+        A, D, S);
 
     ambient += A;
     diffuse += D;
