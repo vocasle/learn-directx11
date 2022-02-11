@@ -67,7 +67,7 @@ std::unique_ptr<Model> ParseObjectFile(const std::string& filepath)
 		textCoords.reserve(mesh->mNumVertices);
 		for (unsigned int i = 0; i < mesh->mNumVertices; ++i)
 		{
-			textCoords.push_back({ mesh->mTextureCoords[i]->x, mesh->mTextureCoords[i]->y });
+			textCoords.push_back({ mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y });
 		}
 	}
 

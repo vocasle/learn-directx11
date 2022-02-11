@@ -183,4 +183,5 @@ private:
     // Textures
     Microsoft::WRL::ComPtr<ID3D11Texture2D>             m_texture;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>    m_textureView;
+    Microsoft::WRL::ComPtr<ID3D11SamplerState>          m_sampler;
 };

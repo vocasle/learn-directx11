@@ -50,7 +50,6 @@ cbuffer LightingData
     SpotLight spotLight;
     float3 eyePos;
     Material material;
-    Texture2D diffuseMap;
 };
 
 struct PSInput
@@ -65,6 +64,9 @@ struct Pixel
 {
     float4 color    : SV_Target;
 };
+
+Texture2D diffuseMap;
+SamplerState samLinear;
 
 void ComputeDirectionalLight(Material mat,
     DirectionalLight dl,
@@ -224,7 +226,9 @@ Pixel main(PSInput In)
     diffuse += D;
     specular += S;
 
-    Out.color = ambient + diffuse + specular;
+    float4 texColor = diffuseMap.Sample(samLinear, In.textCoord);
+
+    Out.color = texColor * (ambient + diffuse) + specular;
     Out.color.w = material.Diffuse.w;
 
     return Out;

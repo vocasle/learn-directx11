@@ -38,7 +38,7 @@ void Game::Initialize(HWND window, int width, int height)
     m_mouse->SetMode(Mouse::MODE_RELATIVE);
     // Initialize camera
     m_camera = std::make_unique<Camera>();
-    m_model = Model::LoadModel("../assets/teapot.obj");
+    m_model = Model::LoadModel("../assets/cube_text.obj");
 
     m_deviceResources->CreateDeviceResources();
     CreateDeviceDependentResources();
@@ -184,6 +184,13 @@ void Game::Render()
     // Set pixel shader
     context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 
+    // Set texture and sampler.
+    auto sampler = m_sampler.Get();
+    context->PSSetSamplers(0, 1, &sampler);
+
+    auto texture = m_textureView.Get();
+    context->PSSetShaderResources(0, 1, &texture);
+
     // Experiment with rasterizer state
     //D3D11_RASTERIZER_DESC rsDesc;
     //ZeroMemory(&rsDesc, sizeof(D3D11_RASTERIZER_DESC));
@@ -197,17 +204,8 @@ void Game::Render()
     //context->RSSetState(pRastState.Get());
 
 
-    // Draw teapot indexed
-    //context->DrawIndexed(m_model->GetFaces().size(), 0, 0);
-    //context->Draw(36, 0);
+    // Draw indexed
     context->DrawIndexed(m_model->GetFaces().size() * 3, 0, 0);
-
-    // Draw the cube indexed
-    //context->DrawIndexed(36, 0, 0);
-
-    // Change primitive topology to draw Axii
-    //context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-    //context->DrawIndexed(6, 36, 0);
 
     m_deviceResources->PIXEndEvent();
 
@@ -399,6 +397,22 @@ void Game::CreateDeviceDependentResources()
         LoadTexture(L"../assets/box.dds");
     }
 
+    // Create sampler.
+    {
+        D3D11_SAMPLER_DESC samplerDesc = {};
+        samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+        samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+        samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+        samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+        samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+        samplerDesc.MinLOD = 0;
+        samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+        DX::ThrowIfFailed(
+            device->CreateSamplerState(&samplerDesc,
+                m_sampler.ReleaseAndGetAddressOf()));
+    }
+
     // Create the constant buffer
     {
         const CD3D11_BUFFER_DESC bufferDesc(sizeof(SceneParams), D3D11_BIND_CONSTANT_BUFFER,
@@ -475,6 +489,9 @@ void Game::OnDeviceLost()
     m_pixelShader.Reset();
     m_constantBuffer.Reset();
     m_lightingData.Reset();
+    m_texture.Reset();
+    m_textureView.Reset();
+    m_sampler.Reset();
 }
 
 void Game::OnDeviceRestored()
