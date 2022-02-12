@@ -20,6 +20,54 @@ using namespace DirectX;
 
 using Microsoft::WRL::ComPtr;
 
+namespace
+{
+    struct Plane
+    {
+        std::vector<Vertex> Vertices;
+        std::vector<Face> Faces;
+    };
+
+    Plane CreatePlane(XMFLOAT3 o, XMFLOAT3 v, XMFLOAT3 n, float w, float h)
+    {
+        XMVECTOR or = XMLoadFloat3(&o);
+        XMVECTOR vec = XMLoadFloat3(&v);
+        XMVECTOR norm = XMLoadFloat3(&n);
+        XMVECTOR m = XMVector3Cross(norm, vec);
+        XMVECTOR e = XMVector3Cross(norm, m);
+        XMVECTOR p1 = or + XMVectorScale(m, h);
+        XMVECTOR p3 = or + XMVectorScale(e, w);
+        XMVECTOR p2 = (p1 - or) + (p3 - or);
+
+        Plane p;
+        Vertex ver;
+        // bottom left
+        XMStoreFloat3(&ver.position, or);
+        XMStoreFloat3(&ver.normal, norm);
+        ver.tex = XMFLOAT2(0.0f, 1.0f);
+        p.Vertices.push_back(ver);
+
+        // top left
+        XMStoreFloat3(&ver.position, p1);
+        ver.tex = XMFLOAT2(0.0f, 0.0f);
+        p.Vertices.push_back(ver);
+
+        // bottom right
+        XMStoreFloat3(&ver.position, p3);
+        ver.tex = XMFLOAT2(1.0f, 1.0f);
+        p.Vertices.push_back(ver);
+
+        // top right
+        XMStoreFloat3(&ver.position, p2);
+        ver.tex = XMFLOAT2(1.0f, 0.0f);
+        p.Vertices.push_back(ver);
+
+        p.Faces.push_back({ 0, 1, 2 });
+        p.Faces.push_back({ 2, 1, 3 });
+        return p;
+    }
+}
+
 Game::Game() noexcept(false)
 {
     m_deviceResources = std::make_unique<DX::DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB);
