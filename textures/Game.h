@@ -91,6 +91,7 @@ namespace
         SpotLight spotLight;
         XMVECTOR eyePos;
         Material material;
+        bool hasTexture = false;
     };
 
     static_assert((sizeof(SceneParams) % 16) == 0, "Constant buffer must always be 16-byte aligned");

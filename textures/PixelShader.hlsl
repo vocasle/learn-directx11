@@ -50,6 +50,7 @@ cbuffer LightingData
     SpotLight spotLight;
     float3 eyePos;
     Material material;
+    bool hasTexture;
 };
 
 struct PSInput
@@ -226,9 +227,17 @@ Pixel main(PSInput In)
     diffuse += D;
     specular += S;
 
-    float4 texColor = diffuseMap.Sample(samLinear, In.textCoord);
+    if (hasTexture)
+    {
+        float4 texColor = diffuseMap.Sample(samLinear, In.textCoord);
 
-    Out.color = texColor * (ambient + diffuse) + specular;
+        Out.color = texColor * (ambient + diffuse) + specular;
+    }
+    else
+    {
+        Out.color = ambient + diffuse + specular;
+    }
+
     Out.color.w = material.Diffuse.w;
 
     return Out;
