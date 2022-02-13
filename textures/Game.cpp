@@ -233,24 +233,11 @@ void Game::Render()
     context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 
     // Set texture and sampler.
-    auto sampler = m_sampler.Get();
+    const auto sampler = m_model->GetTextureSampler();
     context->PSSetSamplers(0, 1, &sampler);
 
-    auto texture = m_textureView.Get();
+    const auto texture = m_model->GetTextureView();
     context->PSSetShaderResources(0, 1, &texture);
-
-    // Experiment with rasterizer state
-    //D3D11_RASTERIZER_DESC rsDesc;
-    //ZeroMemory(&rsDesc, sizeof(D3D11_RASTERIZER_DESC));
-    //rsDesc.FillMode = D3D11_FILL_SOLID;
-    //rsDesc.CullMode = D3D11_CULL_NONE;
-    //rsDesc.FrontCounterClockwise = false;
-    //rsDesc.DepthClipEnable = false;
-
-    //ComPtr<ID3D11RasterizerState> pRastState;
-    //DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateRasterizerState(&rsDesc, pRastState.ReleaseAndGetAddressOf()));
-    //context->RSSetState(pRastState.Get());
-
 
     // Draw indexed
     context->DrawIndexed(m_model->GetFaces().size() * 3, 0, 0);
@@ -440,25 +427,10 @@ void Game::CreateDeviceDependentResources()
                 m_indexBuffer.ReleaseAndGetAddressOf()));
     }
 
-    // Create textures
+    // Create textures for model
+    // TODO: use loop to load texture for array of models
     {
-        LoadTexture(L"../assets/box.dds");
-    }
-
-    // Create sampler.
-    {
-        D3D11_SAMPLER_DESC samplerDesc = {};
-        samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-        samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-        samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-        samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-        samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-        samplerDesc.MinLOD = 0;
-        samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-
-        DX::ThrowIfFailed(
-            device->CreateSamplerState(&samplerDesc,
-                m_sampler.ReleaseAndGetAddressOf()));
+        m_model->LoadTexture(device);
     }
 
     // Create the constant buffer
@@ -519,14 +491,6 @@ void Game::CreateWindowSizeDependentResources()
     XMStoreFloat4x4(&m_projectionMatrix, projection);
 }
 
-void Game::LoadTexture(const wchar_t* filepath)
-{  
-    DX::ThrowIfFailed(CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), 
-        filepath,
-        reinterpret_cast<ID3D11Resource**>(m_texture.ReleaseAndGetAddressOf()),
-        m_textureView.ReleaseAndGetAddressOf()));
-}
-
 void Game::OnDeviceLost()
 {
     // Add Direct3D resource cleanup here.
@@ -537,9 +501,6 @@ void Game::OnDeviceLost()
     m_pixelShader.Reset();
     m_constantBuffer.Reset();
     m_lightingData.Reset();
-    m_texture.Reset();
-    m_textureView.Reset();
-    m_sampler.Reset();
 }
 
 void Game::OnDeviceRestored()

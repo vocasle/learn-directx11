@@ -144,8 +144,6 @@ private:
     void CreateDeviceDependentResources();
     void CreateWindowSizeDependentResources();
 
-    void LoadTexture(const wchar_t* filepath);
-
     // Device resources.
     std::unique_ptr<DX::DeviceResources>    m_deviceResources;
 
@@ -180,9 +178,4 @@ private:
     // Camera
     std::unique_ptr<Camera>     m_camera;
     std::unique_ptr<Model>      m_model;
-
-    // Textures
-    Microsoft::WRL::ComPtr<ID3D11Texture2D>             m_texture;
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>    m_textureView;
-    Microsoft::WRL::ComPtr<ID3D11SamplerState>          m_sampler;
 };
