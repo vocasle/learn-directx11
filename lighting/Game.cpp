@@ -119,7 +119,7 @@ void Game::Initialize(HWND window, int width, int height)
     m_mouse->SetMode(Mouse::MODE_RELATIVE);
     // Initialize camera
     m_camera = std::make_unique<Camera>();
-    m_model = Model::LoadModel("../assets/monkey.obj");
+    m_model = Model::LoadModel("../assets/teapot.obj");
 
     m_deviceResources->CreateDeviceResources();
     CreateDeviceDependentResources();
@@ -145,6 +145,9 @@ void Game::Tick()
     Render();
 }
 
+static float x = 0.0f;
+static float z = 0.0f;
+
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer)
 {
@@ -152,6 +155,9 @@ void Game::Update(DX::StepTimer const& timer)
 
     // Add your game logic here.
     elapsedTime;
+
+    x += elapsedTime;
+    z += elapsedTime;
 
     // Handle controller input for exit
     const auto pad = m_gamePad->GetState(0);
@@ -239,7 +245,13 @@ void Game::Render()
     lightingData.material.Ambient = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
     lightingData.material.Diffuse = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
     lightingData.material.Specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 16.0f);
-
+    lightingData.pointLight.Ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+    lightingData.pointLight.Diffuse = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
+    lightingData.pointLight.Specular = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
+    lightingData.pointLight.Att = XMFLOAT3(0.0f, 0.1f, 0.0f);
+    lightingData.pointLight.Range = 25.0f;
+    static constexpr float r = 3.0f;
+    lightingData.pointLight.Position = XMFLOAT3(r * sin(x), r / 2.0f, r * cos(z));
 
     {
         D3D11_MAPPED_SUBRESOURCE mapped;

@@ -50,20 +50,24 @@ cbuffer LightingData
     SpotLight spotLight;
     float3 eyePos;
     Material material;
+    bool hasTexture;
 };
 
 struct PSInput
 {
-    float4 position : SV_Position;
-    float4 color    : COLOR0;
-    float3 normal   : NORMAL;
-    float3 positionW : POSITION;
+    float4 position     : SV_Position;
+    float3 normal       : NORMAL;
+    float2 textCoord    : TEXTCOORD;
+    float3 positionW    : POSITION;
 };
 
 struct Pixel
 {
     float4 color    : SV_Target;
 };
+
+Texture2D diffuseMap;
+SamplerState samLinear;
 
 void ComputeDirectionalLight(Material mat,
     DirectionalLight dl,
@@ -137,6 +141,46 @@ void ComputePointlLight(Material mat,
     specular *= att;
 }
 
+void ComputeSpotLight(Material mat, SpotLight sl,
+    float3 pos, float3 normal, float3 toEye,
+    out float4 ambient, out float4 diffuse, out float4 spec)
+{
+    // Initialize outputs.
+    ambient = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    diffuse = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    spec = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    // The vector from the surface to the light.
+    float3 lightVec = sl.Position - pos;
+    // The distance from surface to light.
+    float d = length(lightVec);
+    // Range test.
+    if (d > sl.Range)
+        return;
+    // Normalize the light vector.
+    lightVec = normalize(lightVec);
+    // Ambient term.
+    ambient = mat.Ambient * sl.Ambient;
+    // Add diffuse and specular term, provided the surface is in
+    // the line of site of the light.
+    float diffuseFactor = dot(lightVec, normal);
+    
+    if (diffuseFactor > 0.0f)
+    {
+        float3 v = reflect(-lightVec, normal);
+        float specFactor = pow(max(dot(v, toEye), 0.0f), mat.Specular.w);
+        diffuse = diffuseFactor * mat.Diffuse * sl.Diffuse;
+        spec = specFactor * mat.Specular * sl.Specular;
+    }
+    // Scale by spotlight factor and attenuate.
+    float spot = pow(max(dot(-lightVec, sl.Direction), 0.0f), sl.Spot);
+    // Scale by spotlight factor and attenuate.
+    float att = spot / dot(sl.Att, float3(1.0f, d,
+        d * d));
+    ambient *= spot;
+    diffuse *= att;
+    spec *= att;
+}
+
 Pixel main(PSInput In)
 {
     Pixel Out;
@@ -150,7 +194,7 @@ Pixel main(PSInput In)
 
     // Interpolated normal could be unnormalized
     In.normal = normalize(In.normal);
-    float3 toEye = normalize(eyePos - float3(In.positionW.x, In.positionW.y, In.positionW.z));
+    float3 toEye = normalize(eyePos - In.positionW);
 
     ComputeDirectionalLight(material, dirLight, In.normal, toEye,
         A, D, S);
@@ -172,7 +216,28 @@ Pixel main(PSInput In)
     diffuse += D;
     specular += S;
 
-    Out.color = ambient + diffuse + specular;
+    ComputeSpotLight(material,
+        spotLight,
+        In.positionW,
+        In.normal,
+        toEye,
+        A, D, S);
+
+    ambient += A;
+    diffuse += D;
+    specular += S;
+
+    if (true) // TODO: check whether model has a texture
+    {
+        float4 texColor = diffuseMap.Sample(samLinear, In.textCoord);
+
+        Out.color = texColor * (ambient + diffuse) + specular;
+    }
+    else
+    {
+        Out.color = ambient + diffuse + specular;
+    }
+
     Out.color.w = material.Diffuse.w;
 
     return Out;
