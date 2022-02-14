@@ -20,6 +20,8 @@ using namespace DirectX;
 
 using Microsoft::WRL::ComPtr;
 
+using namespace Render;
+
 namespace
 {
     struct Plane
@@ -87,6 +89,7 @@ void Game::Initialize(HWND window, int width, int height)
     // Initialize camera
     m_camera = std::make_unique<Camera>();
     m_model = Model::LoadModel("../assets/cube_text.obj");
+    m_renderer = std::make_unique<Renderer>();
 
     m_deviceResources->CreateDeviceResources();
     CreateDeviceDependentResources();
@@ -196,51 +199,53 @@ void Game::Render()
     // Add your rendering code here.
 
     // Set the vertex buffer
-    constexpr UINT strides = sizeof(Vertex);
-    constexpr UINT offsets = 0;
-    context->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &strides, &offsets);
-    // Set the index buffer
-    context->IASetIndexBuffer(m_indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-    // Set input assembler state
-    context->IASetInputLayout(m_inputLayout.Get());
-    // Set the primitive topology
-    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    //constexpr UINT strides = sizeof(Vertex);
+    //constexpr UINT offsets = 0;
+    //context->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &strides, &offsets);
+    //// Set the index buffer
+    //context->IASetIndexBuffer(m_indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+    //// Set input assembler state
+    //context->IASetInputLayout(m_inputLayout.Get());
+    //// Set the primitive topology
+    //context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    {
-        D3D11_MAPPED_SUBRESOURCE mapped;
-        DX::ThrowIfFailed(context->Map(m_constantBuffer.Get(), 0,
-            D3D11_MAP_WRITE_DISCARD, 0, &mapped));
-        memcpy(mapped.pData, &m_gSceneParams, sizeof(SceneParams));
-        context->Unmap(m_constantBuffer.Get(), 0);
-    }
+    //{
+    //    D3D11_MAPPED_SUBRESOURCE mapped;
+    //    DX::ThrowIfFailed(context->Map(m_constantBuffer.Get(), 0,
+    //        D3D11_MAP_WRITE_DISCARD, 0, &mapped));
+    //    memcpy(mapped.pData, &m_gSceneParams, sizeof(SceneParams));
+    //    context->Unmap(m_constantBuffer.Get(), 0);
+    //}
 
-    // Set lighting data cbuffer
-    {
-        D3D11_MAPPED_SUBRESOURCE mapped;
-        DX::ThrowIfFailed(context->Map(m_lightingData.Get(), 0,
-            D3D11_MAP_WRITE_DISCARD, 0, &mapped));
-        memcpy(mapped.pData, &m_gLightingData, sizeof(LightingData));
-        context->Unmap(m_lightingData.Get(), 0);
-    }
+    //// Set lighting data cbuffer
+    //{
+    //    D3D11_MAPPED_SUBRESOURCE mapped;
+    //    DX::ThrowIfFailed(context->Map(m_lightingData.Get(), 0,
+    //        D3D11_MAP_WRITE_DISCARD, 0, &mapped));
+    //    memcpy(mapped.pData, &m_gLightingData, sizeof(LightingData));
+    //    context->Unmap(m_lightingData.Get(), 0);
+    //}
 
-    // Vertex shader needs view and projection matrices to perform vertex transform
-    context->VSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
-    // Pixel shader needs lighting data
-    context->PSSetConstantBuffers(0, 1, m_lightingData.GetAddressOf());
-    // Set vertex shader
-    context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
-    // Set pixel shader
-    context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+    //// Vertex shader needs view and projection matrices to perform vertex transform
+    //context->VSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
+    //// Pixel shader needs lighting data
+    //context->PSSetConstantBuffers(0, 1, m_lightingData.GetAddressOf());
+    //// Set vertex shader
+    //context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
+    //// Set pixel shader
+    //context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 
-    // Set texture and sampler.
-    const auto sampler = m_model->GetTextureSampler();
-    context->PSSetSamplers(0, 1, &sampler);
+    //// Set texture and sampler.
+    //const auto sampler = m_model->GetTextureSampler();
+    //context->PSSetSamplers(0, 1, &sampler);
 
-    const auto texture = m_model->GetTextureView();
-    context->PSSetShaderResources(0, 1, &texture);
+    //const auto texture = m_model->GetTextureView();
+    //context->PSSetShaderResources(0, 1, &texture);
 
-    // Draw indexed
-    context->DrawIndexed(m_model->GetFaces().size() * 3, 0, 0);
+    //// Draw indexed
+    //context->DrawIndexed(m_model->GetFaces().size() * 3, 0, 0);
+
+    m_renderer->Render({ *m_model });
 
     m_deviceResources->PIXEndEvent();
 
@@ -326,106 +331,107 @@ void Game::GetDefaultSize(int& width, int& height) const noexcept
 void Game::CreateDeviceDependentResources()
 {
     auto device = m_deviceResources->GetD3DDevice();
+    m_renderer->Init(&*m_deviceResources, { *m_model });
 
     // Initialize device dependent objects here (independent of window size).
     // Load and create shaders
-    {
-        auto vertexShaderBlob = DX::ReadData(L"VertexShader.cso");
+    //{
+    //    auto vertexShaderBlob = DX::ReadData(L"VertexShader.cso");
 
-        DX::ThrowIfFailed(
-            device->CreateVertexShader(vertexShaderBlob.data(), vertexShaderBlob.size(),
-                nullptr, m_vertexShader.ReleaseAndGetAddressOf()));
+    //    DX::ThrowIfFailed(
+    //        device->CreateVertexShader(vertexShaderBlob.data(), vertexShaderBlob.size(),
+    //            nullptr, m_vertexShader.ReleaseAndGetAddressOf()));
 
-        auto pixelShaderBlob = DX::ReadData(L"PixelShader.cso");
+    //    auto pixelShaderBlob = DX::ReadData(L"PixelShader.cso");
 
-        DX::ThrowIfFailed(
-            device->CreatePixelShader(pixelShaderBlob.data(), pixelShaderBlob.size(),
-                nullptr, m_pixelShader.ReleaseAndGetAddressOf()));
+    //    DX::ThrowIfFailed(
+    //        device->CreatePixelShader(pixelShaderBlob.data(), pixelShaderBlob.size(),
+    //            nullptr, m_pixelShader.ReleaseAndGetAddressOf()));
 
-        // Create input layout
-        static constexpr D3D11_INPUT_ELEMENT_DESC s_inputElementDesc[3] = {
-            {"SV_Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"TEXTCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0}
-        };
+    //    // Create input layout
+    //    static constexpr D3D11_INPUT_ELEMENT_DESC s_inputElementDesc[3] = {
+    //        {"SV_Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+    //        {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+    //        {"TEXTCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0}
+    //    };
 
-        DX::ThrowIfFailed(
-            device->CreateInputLayout(s_inputElementDesc, _countof(s_inputElementDesc),
-                vertexShaderBlob.data(), vertexShaderBlob.size(),
-                m_inputLayout.ReleaseAndGetAddressOf()));
-    }
+    //    DX::ThrowIfFailed(
+    //        device->CreateInputLayout(s_inputElementDesc, _countof(s_inputElementDesc),
+    //            vertexShaderBlob.data(), vertexShaderBlob.size(),
+    //            m_inputLayout.ReleaseAndGetAddressOf()));
+    //}
 
     // Create vertex buffer
-    {
-        std::vector<Vertex> vertices;
-        vertices.reserve(m_model->GetPositions().size());
-        for (unsigned int i = 0; i < m_model->GetPositions().size(); ++i)
-        {
-            const Position& p = m_model->GetPositions()[i];
-            const Normal& n = m_model->GetNormals()[i];
-            if (m_model->GetTextCoords().empty())
-            {
-                vertices.push_back({
-                    XMFLOAT3(p.X, p.Y, p.Z),
-                    XMFLOAT3(n.X, n.Y, n.Z),
-                    XMFLOAT2(0.0f, 0.0f)
-                    });
-            }
-            else
-            {
-                const TextCoord& tc = m_model->GetTextCoords()[i];
-                vertices.push_back({
-                    XMFLOAT3(p.X, p.Y, p.Z),
-                    XMFLOAT3(n.X, n.Y, n.Z),
-                    XMFLOAT2(tc.X, tc.Y)
-                    });
-            }
-        }
+    //{
+    //    std::vector<Vertex> vertices;
+    //    vertices.reserve(m_model->GetPositions().size());
+    //    for (unsigned int i = 0; i < m_model->GetPositions().size(); ++i)
+    //    {
+    //        const Position& p = m_model->GetPositions()[i];
+    //        const Normal& n = m_model->GetNormals()[i];
+    //        if (m_model->GetTextCoords().empty())
+    //        {
+    //            vertices.push_back({
+    //                XMFLOAT3(p.X, p.Y, p.Z),
+    //                XMFLOAT3(n.X, n.Y, n.Z),
+    //                XMFLOAT2(0.0f, 0.0f)
+    //                });
+    //        }
+    //        else
+    //        {
+    //            const TextCoord& tc = m_model->GetTextCoords()[i];
+    //            vertices.push_back({
+    //                XMFLOAT3(p.X, p.Y, p.Z),
+    //                XMFLOAT3(n.X, n.Y, n.Z),
+    //                XMFLOAT2(tc.X, tc.Y)
+    //                });
+    //        }
+    //    }
 
-        D3D11_SUBRESOURCE_DATA initialData = {};
-        //initialData.pSysMem = s_vertexData;
-        initialData.pSysMem = &vertices[0];
+    //    D3D11_SUBRESOURCE_DATA initialData = {};
+    //    //initialData.pSysMem = s_vertexData;
+    //    initialData.pSysMem = &vertices[0];
 
-        D3D11_BUFFER_DESC bufferDesc = {};
-        //bufferDesc.ByteWidth = sizeof(Vertex) * s_numVertices;
-        bufferDesc.ByteWidth = sizeof(Vertex) * vertices.size();
-        bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-        bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-        bufferDesc.StructureByteStride = sizeof(Vertex);
+    //    D3D11_BUFFER_DESC bufferDesc = {};
+    //    //bufferDesc.ByteWidth = sizeof(Vertex) * s_numVertices;
+    //    bufferDesc.ByteWidth = sizeof(Vertex) * vertices.size();
+    //    bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    //    bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    //    bufferDesc.StructureByteStride = sizeof(Vertex);
 
-        DX::ThrowIfFailed(
-            device->CreateBuffer(&bufferDesc, &initialData,
-                m_vertexBuffer.ReleaseAndGetAddressOf()));
-    }
+    //    DX::ThrowIfFailed(
+    //        device->CreateBuffer(&bufferDesc, &initialData,
+    //            m_vertexBuffer.ReleaseAndGetAddressOf()));
+    //}
 
     // Create index buffer
-    {
-        std::vector<unsigned int> indices;
-        const auto& faces = m_model->GetFaces();
-        indices.reserve(faces.size());
-        // there is 3 indices per face
-        for (unsigned int i = 0; i < faces.size(); ++i)
-        {
-            indices.push_back(faces[i].X);
-            indices.push_back(faces[i].Y);
-            indices.push_back(faces[i].Z);
-        }
+    //{
+    //    std::vector<unsigned int> indices;
+    //    const auto& faces = m_model->GetFaces();
+    //    indices.reserve(faces.size());
+    //    // there is 3 indices per face
+    //    for (unsigned int i = 0; i < faces.size(); ++i)
+    //    {
+    //        indices.push_back(faces[i].X);
+    //        indices.push_back(faces[i].Y);
+    //        indices.push_back(faces[i].Z);
+    //    }
 
-        D3D11_BUFFER_DESC bufferDesc = {};
-        bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-        //bufferDesc.ByteWidth = sizeof(unsigned int) * s_numIndices;
-        bufferDesc.ByteWidth = sizeof(unsigned int) * indices.size();
-        bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-        bufferDesc.StructureByteStride = 0;
+    //    D3D11_BUFFER_DESC bufferDesc = {};
+    //    bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    //    //bufferDesc.ByteWidth = sizeof(unsigned int) * s_numIndices;
+    //    bufferDesc.ByteWidth = sizeof(unsigned int) * indices.size();
+    //    bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    //    bufferDesc.StructureByteStride = 0;
 
-        D3D11_SUBRESOURCE_DATA initialData = {};
-        //initialData.pSysMem = s_indexData;
-        initialData.pSysMem = &indices[0];
+    //    D3D11_SUBRESOURCE_DATA initialData = {};
+    //    //initialData.pSysMem = s_indexData;
+    //    initialData.pSysMem = &indices[0];
 
-        DX::ThrowIfFailed(
-            device->CreateBuffer(&bufferDesc, &initialData,
-                m_indexBuffer.ReleaseAndGetAddressOf()));
-    }
+    //    DX::ThrowIfFailed(
+    //        device->CreateBuffer(&bufferDesc, &initialData,
+    //            m_indexBuffer.ReleaseAndGetAddressOf()));
+    //}
 
     // Create textures for model
     // TODO: use loop to load texture for array of models
@@ -434,49 +440,49 @@ void Game::CreateDeviceDependentResources()
     }
 
     // Create the constant buffer
-    {
-        const CD3D11_BUFFER_DESC bufferDesc(sizeof(SceneParams), D3D11_BIND_CONSTANT_BUFFER,
-            D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
-        DX::ThrowIfFailed(device->CreateBuffer(&bufferDesc, nullptr,
-            m_constantBuffer.GetAddressOf()));
-    }
+    //{
+    //    const CD3D11_BUFFER_DESC bufferDesc(sizeof(SceneParams), D3D11_BIND_CONSTANT_BUFFER,
+    //        D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+    //    DX::ThrowIfFailed(device->CreateBuffer(&bufferDesc, nullptr,
+    //        m_constantBuffer.GetAddressOf()));
+    //}
 
     // Create lighting data cbuffer
-    {
-        const CD3D11_BUFFER_DESC bufferDesc(sizeof(LightingData),
-            D3D11_BIND_CONSTANT_BUFFER,
-            D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
-        DX::ThrowIfFailed(device->CreateBuffer(&bufferDesc, nullptr,
-            m_lightingData.GetAddressOf()));
-    }
+    //{
+    //    const CD3D11_BUFFER_DESC bufferDesc(sizeof(LightingData),
+    //        D3D11_BIND_CONSTANT_BUFFER,
+    //        D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+    //    DX::ThrowIfFailed(device->CreateBuffer(&bufferDesc, nullptr,
+    //        m_lightingData.GetAddressOf()));
+    //}
 
     // Create lighting data cbuffer source
-    {
-        m_gLightingData.material.Ambient = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
-        m_gLightingData.material.Diffuse = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
-        m_gLightingData.material.Specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 16.0f);
-        m_gLightingData.dirLight.Ambient = XMFLOAT4(0.2f, 0.0f, 0.0f, 1.0f);
-        m_gLightingData.dirLight.Diffuse = XMFLOAT4(0.5f, 0.0f, 0.0f, 1.0f);
-        m_gLightingData.dirLight.Specular = XMFLOAT4(0.5f, 0.0f, 0.0f, 1.0f);
-        m_gLightingData.dirLight.Direction = XMFLOAT3(0.57735f, -0.57735f, 0.57735f);
-        m_gLightingData.pointLight.Ambient = XMFLOAT4(0.0f, 0.3f, 0.0f, 1.0f);
-        m_gLightingData.pointLight.Diffuse = XMFLOAT4(0.0f, 0.7f, 0.0f, 1.0f);
-        m_gLightingData.pointLight.Specular = XMFLOAT4(0.0f, 0.7f, 0.0f, 1.0f);
-        m_gLightingData.pointLight.Att = XMFLOAT3(0.0f, 0.1f, 0.0f);
-        m_gLightingData.pointLight.Range = 25.0f;
-        m_gLightingData.spotLight.Ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-        m_gLightingData.spotLight.Diffuse = XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
-        m_gLightingData.spotLight.Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-        m_gLightingData.spotLight.Att = XMFLOAT3(1.0f, 0.0f, 0.0f);
-        m_gLightingData.spotLight.Spot = 96.0f;
-        m_gLightingData.spotLight.Range = 10000.0f;
-    }
+    //{
+    //    m_gLightingData.material.Ambient = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
+    //    m_gLightingData.material.Diffuse = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
+    //    m_gLightingData.material.Specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 16.0f);
+    //    m_gLightingData.dirLight.Ambient = XMFLOAT4(0.2f, 0.0f, 0.0f, 1.0f);
+    //    m_gLightingData.dirLight.Diffuse = XMFLOAT4(0.5f, 0.0f, 0.0f, 1.0f);
+    //    m_gLightingData.dirLight.Specular = XMFLOAT4(0.5f, 0.0f, 0.0f, 1.0f);
+    //    m_gLightingData.dirLight.Direction = XMFLOAT3(0.57735f, -0.57735f, 0.57735f);
+    //    m_gLightingData.pointLight.Ambient = XMFLOAT4(0.0f, 0.3f, 0.0f, 1.0f);
+    //    m_gLightingData.pointLight.Diffuse = XMFLOAT4(0.0f, 0.7f, 0.0f, 1.0f);
+    //    m_gLightingData.pointLight.Specular = XMFLOAT4(0.0f, 0.7f, 0.0f, 1.0f);
+    //    m_gLightingData.pointLight.Att = XMFLOAT3(0.0f, 0.1f, 0.0f);
+    //    m_gLightingData.pointLight.Range = 25.0f;
+    //    m_gLightingData.spotLight.Ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    //    m_gLightingData.spotLight.Diffuse = XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
+    //    m_gLightingData.spotLight.Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    //    m_gLightingData.spotLight.Att = XMFLOAT3(1.0f, 0.0f, 0.0f);
+    //    m_gLightingData.spotLight.Spot = 96.0f;
+    //    m_gLightingData.spotLight.Range = 10000.0f;
+    //}
 
     // Initialize the world matrix
-    XMMATRIX world = XMMatrixIdentity();
+    //XMMATRIX world = XMMatrixIdentity();
     //XMFLOAT4 translate(0.0f, 0.0f, -10.0f, 0.0f);
     /*XMMatrixTranslationFromVector(XMLoadFloat4(&translate));*/
-    XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
+    //XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
     //XMStoreFloat4x4(&m_worldMatrix, XMMatrixTranslationFromVector(XMLoadFloat4(&translate)));
 }
 

@@ -227,7 +227,7 @@ Pixel main(PSInput In)
     diffuse += D;
     specular += S;
 
-    if (hasTexture)
+    if (true) // TODO: check whether model has a texture
     {
         float4 texColor = diffuseMap.Sample(samLinear, In.textCoord);
 

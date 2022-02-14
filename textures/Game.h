@@ -13,6 +13,8 @@
 #include <GamePad.h>
 #include <Mouse.h>
 
+#include "Renderer.h"
+
 namespace
 {
     using namespace DirectX;
@@ -178,4 +180,7 @@ private:
     // Camera
     std::unique_ptr<Camera>     m_camera;
     std::unique_ptr<Model>      m_model;
+
+    // Renderer
+    std::unique_ptr<Render::Renderer> m_renderer;
 };
